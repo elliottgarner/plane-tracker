@@ -47,6 +47,18 @@ ui = UI()
 STATS_PAGES = 3
 
 
+def _git_version():
+    try:
+        import subprocess
+        return subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=STATIC_DIR, capture_output=True,
+                              text=True, timeout=5).stdout.strip() or "dev"
+    except Exception:
+        return "dev"
+
+
+APP_VERSION = _git_version()   # the kiosk page reloads itself when this changes after an update
+
+
 def dispatch(action, **kw):
     now = time.time()
     with ui.lock:
@@ -244,7 +256,7 @@ def build_state():
         aircraft = sorted(t.aircraft.values(), key=lambda r: r["dist_km"])[:80]
         em = t.emergencies()
         return {
-            "ts": now, "rev": ui.rev, "cfg_rev": cfg.rev, "view": view, "stats_page": ui.stats_page,
+            "version": APP_VERSION, "ts": now, "rev": ui.rev, "cfg_rev": cfg.rev, "view": view, "stats_page": ui.stats_page,
             "zoom_offset": ui.zoom_offset, "filter": t.filter, "locked": t.locked,
             "reason": t.reason, "selected": t.selected,
             "detail": _detail(sel, t.locked) if sel else None,

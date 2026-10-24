@@ -1,0 +1,10 @@
+[Unit]
+Description=Check the plane-tracker repo for updates
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=30min
+RandomizedDelaySec=2min
+
+[Install]
+WantedBy=timers.target

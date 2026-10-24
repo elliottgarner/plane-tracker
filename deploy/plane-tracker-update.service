@@ -1,0 +1,10 @@
+[Unit]
+Description=Plane Tracker - pull updates from git
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=@USER@
+WorkingDirectory=@APPDIR@
+ExecStart=/usr/bin/env bash @APPDIR@/deploy/update.sh

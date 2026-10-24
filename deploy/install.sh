@@ -42,6 +42,17 @@ sed -e "s|@USER@|$USER_NAME|g" -e "s|@APPDIR@|$APPDIR|g" -e "s|@UID@|$USER_ID|g"
 sudo systemctl daemon-reload
 sudo systemctl enable --now plane-tracker.service
 
+echo "==> Auto-update (git pull every 30 min, restart on change)"
+chmod +x "$APPDIR/deploy/update.sh"
+for u in plane-tracker-update.service plane-tracker-update.timer; do
+  sed -e "s|@USER@|$USER_NAME|g" -e "s|@APPDIR@|$APPDIR|g" "$APPDIR/deploy/$u" | sudo tee "/etc/systemd/system/$u" >/dev/null
+done
+# let the update job restart the service (and only that) without a password
+echo "$USER_NAME ALL=(root) NOPASSWD: /usr/bin/systemctl restart plane-tracker.service" | sudo tee /etc/sudoers.d/plane-tracker >/dev/null
+sudo chmod 440 /etc/sudoers.d/plane-tracker
+sudo systemctl daemon-reload
+sudo systemctl enable --now plane-tracker-update.timer
+
 echo "==> Kiosk autostart"
 chmod +x "$APPDIR/deploy/kiosk.sh"
 # Disable the desktop's own screen blanking (PIR logic owns it)
