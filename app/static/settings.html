@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plane Tracker · Settings</title>
+<link rel="icon" href="/static/favicon.svg">
+<style>
+  :root { --bg:#0a0e13; --panel:#10161d; --line:#232e3b; --text:#e8eef4; --dim:#7f8fa0; --amber:#ffb000; --cyan:#4fd1ff; --green:#46d17a; --red:#ff5d5d; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.4 system-ui, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 20px 16px 90px; }
+  h1 { font-size: 22px; letter-spacing: .06em; color: var(--amber); margin: 6px 0 4px; }
+  p.lead { color: var(--dim); margin: 0 0 18px; }
+  fieldset { border: 1px solid var(--line); background: var(--panel); border-radius: 12px; margin: 0 0 16px; padding: 14px 16px 6px; }
+  legend { padding: 0 8px; font-weight: 700; color: var(--cyan); letter-spacing: .06em; text-transform: uppercase; font-size: 12px; }
+  .f { display: grid; grid-template-columns: 1fr 1.2fr; gap: 10px; align-items: center; margin-bottom: 12px; }
+  .f label { font-weight: 600; } .f small { display: block; color: var(--dim); font-weight: 400; font-size: 12px; }
+  input, select, textarea { width: 100%; font-size: 13px; background: #0b1117; color: var(--text); border: 1px solid #2c3948; border-radius: 8px; padding: 9px 10px; font: inherit; }
+  input[type=checkbox] { width: 22px; height: 22px; } input:focus, select:focus { outline: 2px solid var(--cyan); }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .bar { position: fixed; left: 0; right: 0; bottom: 0; background: rgba(10,14,19,.96); border-top: 1px solid var(--line); padding: 12px 16px; display: flex; gap: 10px; justify-content: center; align-items: center; }
+  button { background: var(--amber); color: #1b1200; border: 0; border-radius: 8px; padding: 11px 22px; font: 700 15px inherit; cursor: pointer; }
+  button.ghost { background: #1c2631; color: var(--text); border: 1px solid #2c3948; }
+  #msg { min-width: 160px; font-weight: 600; } .ok { color: var(--green); } .err { color: var(--red); }
+  a { color: var(--cyan); } .row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  @media (max-width: 560px) { .f { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>✈ PLANE TRACKER SETTINGS</h1>
+  <p class="lead">Changes apply instantly — no restart needed. <a href="/">← back to display</a> · <a href="/api/health">health</a></p>
+  <form id="form" autocomplete="off"></form>
+</main>
+<div class="bar"><span id="msg"></span><button id="save">Save</button><button class="ghost" id="reload" type="button">Revert</button></div>
+
+<script>
+const SCHEMA = [
+  ['Location', [
+    ['home_lat', 'Home latitude', 'number', { step: 'any', help: 'Decimal degrees, e.g. 51.5074' }],
+    ['home_lon', 'Home longitude', 'number', { step: 'any', help: 'Negative = west' }],
+    ['home_elevation_m', 'Home elevation (m)', 'number', { step: 1, help: 'Used for the “look up” elevation angle' }],
+    ['range_km', 'Detection range (km)', 'number', { step: 1, min: 5, max: 400, help: 'Aircraft beyond this are ignored (max 400)' }],
+  ]],
+  ['Display', [
+    ['units', 'Units', 'select', { opts: [['imperial', 'Imperial (ft · mph · mi)'], ['nautical', 'Nautical / aviation (ft · kts · nm)'], ['metric', 'Metric (m · km/h · km)']] }],
+    ['tile_style', 'Map style', 'select', { opts: [['dark', 'Dark Matter'], ['positron', 'Positron (light)'], ['osm', 'OpenStreetMap'], ['satellite', 'Satellite']] }],
+    ['tile_url', 'Custom tile URL', 'text', { help: 'Optional. Overrides the style above (use {z}/{x}/{y}); needed for keyed providers' }],
+    ['stats_page_seconds', 'Stats page time (s)', 'number', { step: 1 }],
+    ['stats_screensaver.enabled', 'Late-night stats screensaver', 'checkbox', { help: 'Show stats when the sky is quiet' }],
+    ['stats_screensaver.start_hour', 'Screensaver from (hour)', 'number', { step: 1, min: 0, max: 23 }],
+    ['stats_screensaver.end_hour', 'Screensaver until (hour)', 'number', { step: 1, min: 0, max: 24 }],
+  ]],
+  ['Data source', [
+    ['data_source', 'Source', 'select', { opts: [['local', 'Local SDR only'], ['auto', 'Auto (SDR, fall back to web)'], ['hybrid', 'Hybrid (SDR + web augment)'], ['web', 'Web API only'], ['demo', 'Demo traffic']] }],
+    ['local_url', 'Local SDR URL / file', 'text', { help: 'readsb/dump1090 aircraft.json URL or file path' }],
+    ['web_api_urls', 'Web API URLs (one per line)', 'lines', { help: 'Tried in order; rate-limited ones are rested. {lat} {lon} {radius_nm} are substituted. adsb.lol allows only 500 requests/day, keep it last' }],
+    ['web_poll_seconds', 'Web poll interval (s)', 'number', { step: 1 }],
+    ['lazy_route_lookup', 'Look up missing routes online', 'checkbox', { help: 'Only for the aircraft on screen; results are cached' }],
+  ]],
+  ['Tracking', [
+    ['proximity_km', 'Closest-first strength (km)', 'number', { step: 1, help: 'Smaller = stronger preference for planes near home (default 12)' }],
+    ['airport_filter', 'Ignore airport traffic', 'checkbox', { help: 'Planes taking off / landing / taxiing at nearby airports are not auto-selected (the map stays on home)' }],
+    ['airport_zone_km', 'Airport zone radius (km)', 'number', { step: 1 }],
+    ['airport_ceiling_ft', 'Airport zone ceiling (ft)', 'number', { step: 100, help: 'Below this altitude inside the zone counts as airport traffic' }],
+    ['demote_helicopters', 'Demote helicopters', 'checkbox', { help: 'Police / air-ambulance helicopters rank low and time out quickly' }],
+    ['heli_focus_seconds', 'Helicopter focus limit (s)', 'number', { step: 5 }],
+    ['max_focus_seconds', 'Aircraft focus limit (s)', 'number', { step: 10, help: 'After this long on screen the display rotates to something else' }],
+    ['dwell_seconds', 'Dwell time (s)', 'number', { step: 5, help: 'Minimum time before the focus may switch' }],
+    ['interest_override', 'Promote interesting aircraft', 'checkbox', { help: 'Military, rare, emergency, low passes beat “closest”' }],
+    ['low_alt_ft', 'Low-pass altitude (ft)', 'number', { step: 100 }],
+    ['low_alt_radius_km', 'Low-pass radius (km)', 'number', { step: 1 }],
+  ]],
+  ['Controls', [
+    ['hardware_mode', 'Hardware mode', 'select', { opts: [['touch', 'Touch only'], ['encoder', 'Rotary encoder (KY-040)'], ['toggle', '3-position toggle switch']] }],
+    ['encoder_rotate_action', 'Encoder rotation does', 'select', { opts: [['zoom', 'Zoom in / out'], ['cycle', 'Cycle through planes']] }],
+    ['long_press_seconds', 'Long-press time (s)', 'number', { step: 0.1 }],
+  ]],
+  ['Presence sensor & screen sleep', [
+    ['pir_enabled', 'Use PIR sensor', 'checkbox', {}],
+    ['pir_timeout_min', 'Screen off after no motion (min)', 'number', { step: 0.5, help: '0.5 – 1440 minutes' }],
+    ['display_method', 'Screen power method', 'select', { opts: [['auto', 'Auto-detect'], ['wlr-randr', 'Wayland: wlr-randr'], ['wlopm', 'Wayland: wlopm'], ['xset', 'X11: xset dpms'], ['vcgencmd', 'vcgencmd (legacy)'], ['backlight', 'Backlight sysfs'], ['none', 'Never switch off']] }],
+    ['display_output', 'Output name', 'text', { help: 'e.g. HDMI-A-1 — blank = all outputs' }],
+  ]],
+];
+const form = document.getElementById('form'), msg = document.getElementById('msg');
+const get = (o, p) => p.split('.').reduce((a, k) => a && a[k], o);
+function build(cfg) {
+  form.innerHTML = '';
+  for (const [title, fields] of SCHEMA) {
+    const fs = document.createElement('fieldset'); fs.innerHTML = '<legend>' + title + '</legend>';
+    for (const [key, label, type, o] of fields) {
+      const row = document.createElement('div'); row.className = 'f';
+      const lab = document.createElement('label'); lab.htmlFor = key; lab.innerHTML = label + (o.help ? '<small>' + o.help + '</small>' : '');
+      let el;
+      if (type === 'select') { el = document.createElement('select'); for (const [v, t] of o.opts) el.add(new Option(t, v)); }
+      else if (type === 'lines') { el = document.createElement('textarea'); el.rows = 3; }
+      else { el = document.createElement('input'); el.type = type; if (o.step) el.step = o.step; if (o.min != null) el.min = o.min; if (o.max != null) el.max = o.max; }
+      el.id = el.name = key;
+      const v = get(cfg, key);
+      if (type === 'checkbox') el.checked = !!v; else el.value = type === 'lines' ? (v || []).join('\n') : v;
+      row.append(lab, el); fs.append(row);
+    }
+    form.append(fs);
+  }
+  const t = document.createElement('fieldset'); t.innerHTML = '<legend>Tools</legend><div class="row"><button type="button" class="ghost" data-d="off">Screen off (test)</button><button type="button" class="ghost" data-d="on">Screen on</button></div>';
+  t.querySelectorAll('button').forEach(b => b.onclick = () => fetch('/api/display/' + b.dataset.d, { method: 'POST' }).then(r => r.json()).then(j => flash(j.ok ? 'Display ' + b.dataset.d : 'No display method worked', j.ok)));
+  form.append(t);
+}
+function flash(t, ok = true) { msg.textContent = t; msg.className = ok ? 'ok' : 'err'; clearTimeout(flash.t); flash.t = setTimeout(() => msg.textContent = '', 4000); }
+async function load() { build(await (await fetch('/api/config')).json()); }
+function collect() {
+  const patch = {};
+  for (const [, fields] of SCHEMA) for (const [key, , type] of fields) {
+    const el = document.getElementById(key);
+    const v = type === 'checkbox' ? el.checked : type === 'lines' ? el.value.split('\n').map(s => s.trim()).filter(Boolean) : el.value;
+    const parts = key.split('.'); let o = patch;
+    parts.slice(0, -1).forEach(k => o = (o[k] = o[k] || {})); o[parts.at(-1)] = v;
+  }
+  return patch;
+}
+document.getElementById('save').onclick = async (e) => {
+  e.preventDefault();
+  const r = await fetch('/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(collect()) });
+  const j = await r.json();
+  if (r.ok) { flash(j.changed.length ? 'Saved ✓ (' + j.changed.length + ' changed)' : 'Nothing changed'); build(j.config); } else flash(j.detail || 'Error', false);
+};
+document.getElementById('reload').onclick = load;
+load();
+</script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+[Unit]
+Description=Plane Tracker (dashboard backend, GPIO + display control)
+After=network.target readsb.service
+Wants=readsb.service
+
+[Service]
+Type=simple
+User=@USER@
+Group=@USER@
+# gpio: /dev/gpiochip*   video/render: backlight sysfs   (lgpio needs no root)
+SupplementaryGroups=gpio video render
+WorkingDirectory=@APPDIR@
+Environment=PLANE_TRACKER_DATA=@APPDIR@/data
+# Needed so wlr-randr / xset can reach the desktop session when the display is put to sleep.
+# 1000 = first normal user; compositor socket is wayland-0 (labwc) or wayland-1 (Wayfire).
+Environment=XDG_RUNTIME_DIR=/run/user/@UID@
+Environment=DISPLAY=:0
+ExecStart=@APPDIR@/.venv/bin/python run.py --host 0.0.0.0 --port 5000
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

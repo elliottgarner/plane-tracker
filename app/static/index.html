@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Plane Tracker</title>
+<link rel="icon" href="/static/favicon.svg">
+<link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css" onerror="this.onerror=null;this.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- ================= LIVE TRACKER ================= -->
+  <section id="tracker">
+    <div id="map-panel">
+      <div id="map"></div>
+      <div id="chips">
+        <span class="chip" id="chip-src">—</span>
+        <span class="chip" id="chip-count">0 aircraft</span>
+        <span class="chip warn" id="chip-filter" hidden>★ INTERESTING ONLY</span>
+      </div>
+      <div id="touch-bar" hidden>
+        <button data-act="zoom_out" aria-label="Zoom out">−</button>
+        <button data-act="zoom_in" aria-label="Zoom in">+</button>
+        <button data-act="prev" aria-label="Previous aircraft">‹</button>
+        <button data-act="next" aria-label="Next aircraft">›</button>
+        <button data-act="toggle_lock" id="btn-lock" aria-label="Lock">🔒</button>
+        <button data-act="filter" id="btn-filter" aria-label="Filter">★</button>
+        <button data-act="toggle_view" aria-label="Stats">📊</button>
+      </div>
+      <div id="no-data" hidden>NO DATA FEED<small id="no-data-msg"></small></div>
+    </div>
+
+    <aside id="card">
+      <div id="card-live" hidden>
+        <header class="row-head">
+          <div class="logo" id="logo"><img id="logo-img" alt=""><span id="logo-crest"></span></div>
+          <div class="ident">
+            <div class="callsign" id="callsign">—</div>
+            <div class="airline" id="airline">—</div>
+          </div>
+          <div class="badges" id="badges"></div>
+        </header>
+
+        <div class="route" id="route">
+          <div class="apt" id="apt-o"><b>---</b><span>—</span><i>—</i></div>
+          <div class="prog">
+            <div class="bar"><div class="fill" id="prog-fill"></div><div class="glyph" id="prog-glyph"></div></div>
+            <div class="prog-txt" id="prog-txt">&nbsp;</div>
+          </div>
+          <div class="apt right" id="apt-d"><b>---</b><span>—</span><i>—</i></div>
+        </div>
+
+        <div class="craft">
+          <div class="sil" id="sil"></div>
+          <div class="craft-txt">
+            <div class="model" id="model">—</div>
+            <div class="meta"><span id="reg">—</span><span id="typecode">—</span></div>
+          </div>
+        </div>
+
+        <div class="tele">
+          <div><label>Altitude</label><b id="t-alt">—</b><u id="u-alt">ft</u></div>
+          <div><label>Speed</label><b id="t-spd">—</b><u id="u-spd">kts</u></div>
+          <div><label>Vert. speed</label><b id="t-vs">—</b><u id="u-vs">fpm</u></div>
+          <div><label>Track</label><b id="t-trk">—</b><u>°</u></div>
+          <div><label>Squawk</label><b id="t-sq">—</b><u id="u-sq">&nbsp;</u></div>
+          <div><label>Distance</label><b id="t-dist">—</b><u id="u-dist">mi</u></div>
+        </div>
+
+        <div class="lookup">
+          <svg id="dial" viewBox="-50 -50 100 100">
+            <circle r="44" class="dial-ring"/>
+            <g class="dial-ticks"></g>
+            <text y="-33" class="dial-n">N</text>
+            <g id="needle"><path d="M0 -40 L6 4 L0 0 L-6 4Z"/></g>
+          </svg>
+          <div class="look-txt">
+            <div class="look-main" id="look-main">—</div>
+            <div class="look-sub" id="look-sub">—</div>
+            <div class="elev"><div id="elev-fill"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="card-idle">
+        <div class="clock" id="clock">--:--</div>
+        <div class="idle-title">Clear skies</div>
+        <div class="idle-sub" id="idle-sub">Waiting for aircraft…</div>
+        <div class="idle-stats">
+          <div><b id="idle-today">0</b><span>seen today</span></div>
+          <div><b id="idle-last">—</b><span id="idle-last-sub">nothing yet</span></div>
+        </div>
+      </div>
+
+      <footer id="card-foot"><span id="reason">—</span><span id="foot-right"></span></footer>
+    </aside>
+
+    <div id="alert" hidden><span class="alert-icon">⚠</span><span id="alert-txt"></span></div>
+  </section>
+
+  <!-- ================= STATS / HALL OF FAME ================= -->
+  <section id="stats" hidden>
+    <header>
+      <div><h1 id="stats-title">TODAY</h1><span id="stats-date"></span></div>
+      <div class="dots" id="dots"><i></i><i></i><i></i></div>
+      <button id="back-btn" type="button">✈ Back to map</button>
+    </header>
+    <div class="pages">
+      <div class="page" id="pg0">
+        <div class="today-top">
+          <div class="big"><b id="s-total">0</b><span>aircraft logged today</span></div>
+          <div class="big"><b id="s-peak">—</b><span id="s-peak-sub">peak hour</span></div>
+          <div class="big"><b id="s-unique">0</b><span>unique airframes</span></div>
+        </div>
+        <div class="hours" id="hours"></div>
+        <div class="hours-axis"><span>00</span><span>06</span><span>12</span><span>18</span><span>23</span></div>
+        <div class="tops">
+          <div><label>Busiest airlines</label><ol id="s-airlines"></ol></div>
+          <div><label>Most common types</label><ol id="s-types"></ol></div>
+        </div>
+      </div>
+      <div class="page" id="pg1"><div class="hof" id="hof"></div></div>
+      <div class="page" id="pg2">
+        <label class="plabel">Rarest &amp; most interesting visitors today</label>
+        <ul class="rare-list" id="rare-list"></ul>
+      </div>
+    </div>
+  </section>
+</div>
+<script src="/static/icons.js"></script>
+<script>
+  // Prefer the locally vendored Leaflet (offline-safe); fall back to the CDN.
+  (function () {
+    function load(src, ok, fail) { var s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = fail; document.head.appendChild(s); }
+    function boot() { var s = document.createElement('script'); s.src = '/static/app.js'; document.body.appendChild(s); }
+    load('/static/vendor/leaflet/leaflet.js', boot, function () { load('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js', boot, function () { document.body.insertAdjacentHTML('beforeend', '<p style="color:#f66;padding:20px">Leaflet failed to load.</p>'); }); });
+  })();
+</script>
+</body>
+</html>

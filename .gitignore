@@ -1,0 +1,29 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+
+# Runtime data (config, reference DB, sightings log) - created on the Pi
+data/
+*.db
+*.db-wal
+*.db-shm
+*.log
+
+# Downloaded at install time / cached at runtime
+app/static/vendor/
+app/static/logos/
+
+# Secrets / local overrides
+.env
+*.local
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

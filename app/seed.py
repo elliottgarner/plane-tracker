@@ -1,0 +1,97 @@
+"""Tiny built-in reference seed so the display works before the full DB is built.
+
+tools/build_reference_db.py replaces this with the complete open datasets.
+"""
+
+# icao, iata, name, country, radio callsign
+AIRLINES = [
+    ("BAW", "BA", "British Airways", "United Kingdom", "SPEEDBIRD"),
+    ("SHT", "BA", "British Airways Shuttle", "United Kingdom", "SHUTTLE"),
+    ("EZY", "U2", "easyJet", "United Kingdom", "EASY"),
+    ("EJU", "EC", "easyJet Europe", "Austria", "ALPINE"),
+    ("VIR", "VS", "Virgin Atlantic", "United Kingdom", "VIRGIN"),
+    ("TOM", "BY", "TUI Airways", "United Kingdom", "TOMJET"),
+    ("TUI", "BY", "TUI Airways", "United Kingdom", "TOMJET"),
+    ("RYR", "FR", "Ryanair", "Ireland", "RYANAIR"),
+    ("RUK", "FR", "Ryanair UK", "United Kingdom", "RYANAIR UK"),
+    ("EIN", "EI", "Aer Lingus", "Ireland", "SHAMROCK"),
+    ("DLH", "LH", "Lufthansa", "Germany", "LUFTHANSA"),
+    ("AFR", "AF", "Air France", "France", "AIRFRANS"),
+    ("KLM", "KL", "KLM Royal Dutch Airlines", "Netherlands", "KLM"),
+    ("IBE", "IB", "Iberia", "Spain", "IBERIA"),
+    ("VLG", "VY", "Vueling", "Spain", "VUELING"),
+    ("SWR", "LX", "Swiss", "Switzerland", "SWISS"),
+    ("AUA", "OS", "Austrian Airlines", "Austria", "AUSTRIAN"),
+    ("SAS", "SK", "Scandinavian Airlines", "Sweden", "SCANDINAVIAN"),
+    ("NSZ", "DY", "Norwegian Air Sweden", "Sweden", "NORSWEDE"),
+    ("NAX", "DY", "Norwegian Air Shuttle", "Norway", "NORSHUTTLE"),
+    ("FIN", "AY", "Finnair", "Finland", "FINNAIR"),
+    ("TAP", "TP", "TAP Air Portugal", "Portugal", "AIR PORTUGAL"),
+    ("LOT", "LO", "LOT Polish Airlines", "Poland", "LOT"),
+    ("WZZ", "W6", "Wizz Air", "Hungary", "WIZZ AIR"),
+    ("THY", "TK", "Turkish Airlines", "Turkey", "TURKISH"),
+    ("UAE", "EK", "Emirates", "United Arab Emirates", "EMIRATES"),
+    ("ETD", "EY", "Etihad Airways", "United Arab Emirates", "ETIHAD"),
+    ("QTR", "QR", "Qatar Airways", "Qatar", "QATARI"),
+    ("SIA", "SQ", "Singapore Airlines", "Singapore", "SINGAPORE"),
+    ("QFA", "QF", "Qantas", "Australia", "QANTAS"),
+    ("AAL", "AA", "American Airlines", "United States", "AMERICAN"),
+    ("DAL", "DL", "Delta Air Lines", "United States", "DELTA"),
+    ("UAL", "UA", "United Airlines", "United States", "UNITED"),
+    ("ACA", "AC", "Air Canada", "Canada", "AIR CANADA"),
+    ("FDX", "FX", "FedEx Express", "United States", "FEDEX"),
+    ("UPS", "5X", "UPS Airlines", "United States", "UPS"),
+    ("BGA", "", "Airbus Transport International", "France", "BELUGA"),
+]
+
+# icao, iata, name, city, country, lat, lon
+AIRPORTS = [
+    ("EGLL", "LHR", "London Heathrow", "London", "United Kingdom", 51.4706, -0.4619),
+    ("EGKK", "LGW", "London Gatwick", "London", "United Kingdom", 51.1481, -0.1903),
+    ("EGSS", "STN", "London Stansted", "London", "United Kingdom", 51.8850, 0.2350),
+    ("EGLC", "LCY", "London City", "London", "United Kingdom", 51.5053, 0.0553),
+    ("EGPH", "EDI", "Edinburgh", "Edinburgh", "United Kingdom", 55.9500, -3.3725),
+    ("EGNM", "LBA", "Leeds Bradford", "Leeds", "United Kingdom", 53.8659, -1.6606),
+    ("KJFK", "JFK", "John F. Kennedy Intl", "New York", "United States", 40.6398, -73.7789),
+    ("KATL", "ATL", "Hartsfield-Jackson Atlanta Intl", "Atlanta", "United States", 33.6367, -84.4281),
+    ("LFMN", "NCE", "Nice Côte d'Azur", "Nice", "France", 43.6584, 7.2159),
+    ("LFPG", "CDG", "Paris Charles de Gaulle", "Paris", "France", 49.0097, 2.5479),
+    ("LFBO", "TLS", "Toulouse-Blagnac", "Toulouse", "France", 43.6293, 1.3638),
+    ("EDDF", "FRA", "Frankfurt am Main", "Frankfurt", "Germany", 50.0379, 8.5622),
+    ("LEMD", "MAD", "Madrid Barajas", "Madrid", "Spain", 40.4719, -3.5626),
+    ("EHAM", "AMS", "Amsterdam Schiphol", "Amsterdam", "Netherlands", 52.3086, 4.7639),
+    ("OMDB", "DXB", "Dubai Intl", "Dubai", "United Arab Emirates", 25.2528, 55.3644),
+    ("GCRR", "ACE", "Lanzarote", "Lanzarote", "Spain", 28.9455, -13.6052),
+    ("ENGM", "OSL", "Oslo Gardermoen", "Oslo", "Norway", 60.1939, 11.1004),
+]
+
+COUNTRIES = {
+    "GB": "United Kingdom", "US": "United States", "FR": "France", "DE": "Germany", "ES": "Spain", "IT": "Italy",
+    "NL": "Netherlands", "BE": "Belgium", "IE": "Ireland", "CH": "Switzerland", "AT": "Austria", "PT": "Portugal",
+    "SE": "Sweden", "NO": "Norway", "DK": "Denmark", "FI": "Finland", "IS": "Iceland", "PL": "Poland",
+    "CZ": "Czechia", "HU": "Hungary", "GR": "Greece", "TR": "Turkey", "RO": "Romania", "BG": "Bulgaria",
+    "HR": "Croatia", "RS": "Serbia", "CA": "Canada", "MX": "Mexico", "BR": "Brazil", "AR": "Argentina",
+    "AE": "United Arab Emirates", "QA": "Qatar", "SA": "Saudi Arabia", "IL": "Israel", "EG": "Egypt",
+    "MA": "Morocco", "ZA": "South Africa", "KE": "Kenya", "IN": "India", "CN": "China", "JP": "Japan",
+    "KR": "South Korea", "SG": "Singapore", "TH": "Thailand", "HK": "Hong Kong", "AU": "Australia",
+    "NZ": "New Zealand", "RU": "Russia", "UA": "Ukraine", "CY": "Cyprus", "MT": "Malta", "LU": "Luxembourg",
+    "EE": "Estonia", "LV": "Latvia", "LT": "Lithuania", "SK": "Slovakia", "SI": "Slovenia", "JE": "Jersey",
+    "GG": "Guernsey", "IM": "Isle of Man", "JO": "Jordan", "KW": "Kuwait", "OM": "Oman", "BH": "Bahrain",
+}
+
+TYPE_NAMES = {
+    "A318": "Airbus A318", "A319": "Airbus A319", "A320": "Airbus A320", "A321": "Airbus A321",
+    "A19N": "Airbus A319neo", "A20N": "Airbus A320neo", "A21N": "Airbus A321neo",
+    "A332": "Airbus A330-200", "A333": "Airbus A330-300", "A339": "Airbus A330-900",
+    "A359": "Airbus A350-900", "A35K": "Airbus A350-1000", "A388": "Airbus A380-800",
+    "B737": "Boeing 737", "B738": "Boeing 737-800", "B739": "Boeing 737-900", "B38M": "Boeing 737 MAX 8",
+    "B744": "Boeing 747-400", "B748": "Boeing 747-8", "B752": "Boeing 757-200", "B763": "Boeing 767-300",
+    "B772": "Boeing 777-200", "B77W": "Boeing 777-300ER", "B788": "Boeing 787-8", "B789": "Boeing 787-9",
+    "B78X": "Boeing 787-10", "E170": "Embraer 170", "E190": "Embraer 190", "E195": "Embraer 195",
+    "E75L": "Embraer 175", "CRJ9": "Bombardier CRJ900", "AT72": "ATR 72", "AT76": "ATR 72-600",
+    "DH8D": "Dash 8 Q400", "C172": "Cessna 172 Skyhawk", "C152": "Cessna 152", "PA28": "Piper PA-28 Cherokee",
+    "SR22": "Cirrus SR22", "DA40": "Diamond DA40", "C17": "Boeing C-17 Globemaster III",
+    "C130": "Lockheed C-130 Hercules", "SPIT": "Supermarine Spitfire", "A3ST": "Airbus Beluga",
+    "A337": "Airbus BelugaXL", "EC35": "Eurocopter EC135", "R44": "Robinson R44", "A400": "Airbus A400M Atlas",
+    "GLF5": "Gulfstream V", "GLF6": "Gulfstream G650", "C56X": "Cessna Citation Excel", "F2TH": "Dassault Falcon 2000",
+}
