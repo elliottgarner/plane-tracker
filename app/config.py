@@ -16,8 +16,8 @@ LOGO_DIR = STATIC_DIR / "logos"
 
 DEFAULTS = {
     # --- location -----------------------------------------------------------
-    "home_lat": 51.5074,
-    "home_lon": -0.1278,
+    "home_lat": 53.50864828515752,
+    "home_lon": -2.371656425587413,
     "home_elevation_m": 20,
     "range_km": 60,
     # --- presentation -------------------------------------------------------
@@ -27,7 +27,7 @@ DEFAULTS = {
     "stats_page_seconds": 12,
     "stats_screensaver": {"enabled": True, "start_hour": 0, "end_hour": 5},
     # --- data ---------------------------------------------------------------
-    "data_source": "local",         # local | web | hybrid | auto | demo
+    "data_source": "hybrid",       # local | web | hybrid | auto | demo
     "local_url": "http://localhost:8080/data/aircraft.json",  # URL or file path
     # Tried in order; a provider that rate-limits (429/403) is rested and the next one is used.
     # adsb.lol's free API is capped at 4/s, 60/min and 500 per DAY, so it is last resort only.
@@ -35,7 +35,7 @@ DEFAULTS = {
         "https://opendata.adsb.fi/api/v2/lat/{lat}/lon/{lon}/dist/{radius_nm}",
         "https://api.adsb.lol/v2/point/{lat}/{lon}/{radius_nm}",
     ],
-    "web_poll_seconds": 2,
+    "web_poll_seconds": 5,
     # static per-callsign JSON on a CDN (no API limits)
     "route_url": "https://vrs-standing-data.adsb.lol/routes/{prefix}/{callsign}.json",
     "lazy_route_lookup": True,
@@ -51,7 +51,7 @@ DEFAULTS = {
     "demote_helicopters": True,     # helicopters (esp. police / air ambulance) rank low and time out quickly
     "max_focus_seconds": 120,       # fixed-wing: after this long on screen, rotate away to something else
     "heli_focus_seconds": 30,       # helicopters / emergency services
-    "proximity_km": 12,             # closeness half-scale: smaller = stronger preference for nearby planes
+    "proximity_km": 9,           # closeness half-scale: smaller = stronger preference for nearby planes
     "interest_override": True,
     "low_alt_ft": 3000,
     "low_alt_radius_km": 8,

@@ -352,8 +352,9 @@ async function loadConfig() {
 async function tick() {
   try {
     const st = await api('/api/state');
-    if (window.__ver && st.version !== window.__ver) { location.reload(); return; }   // new release deployed
-    window.__ver = st.version;
+    const stamp = st.version + '|' + st.reload_token;      // new release, service restart, or POST /api/reload
+    if (window.__ver && stamp !== window.__ver) { location.reload(); return; }
+    window.__ver = stamp;
     if (st.cfg_rev !== cfgRev) {
       await loadConfig();
       if (!map) initMap();

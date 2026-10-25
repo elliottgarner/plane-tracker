@@ -40,6 +40,7 @@ class UI:
         self.stats_page = 0
         self.stats_page_ts = time.time()
         self.rev = 0
+        self.reload_token = int(time.time())   # differs after every service restart too
         self.lock = threading.RLock()
 
 
@@ -256,7 +257,7 @@ def build_state():
         aircraft = sorted(t.aircraft.values(), key=lambda r: r["dist_km"])[:80]
         em = t.emergencies()
         return {
-            "version": APP_VERSION, "ts": now, "rev": ui.rev, "cfg_rev": cfg.rev, "view": view, "stats_page": ui.stats_page,
+            "version": APP_VERSION, "reload_token": ui.reload_token, "ts": now, "rev": ui.rev, "cfg_rev": cfg.rev, "view": view, "stats_page": ui.stats_page,
             "zoom_offset": ui.zoom_offset, "filter": t.filter, "locked": t.locked,
             "reason": t.reason, "selected": t.selected,
             "detail": _detail(sel, t.locked) if sel else None,
@@ -315,6 +316,13 @@ async def api_control(body: dict = Body(...)):
     except ValueError as e:
         raise HTTPException(400, str(e))
     return build_state()
+
+
+@app.post("/api/reload")
+async def api_reload():
+    """Make every open dashboard (e.g. the kiosk) reload itself on its next tick."""
+    ui.reload_token += 1
+    return {"ok": True, "token": ui.reload_token}
 
 
 @app.post("/api/display/{state}")
