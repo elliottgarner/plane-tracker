@@ -34,7 +34,12 @@ mkdir -p "$APPDIR/data"
 "$APPDIR/.venv/bin/python" "$APPDIR/tools/build_reference_db.py" || echo "   Reference build had errors; the built-in seed still works."
 
 echo "==> GPIO / display permissions"
-sudo usermod -aG gpio,video,render "$USER_NAME"
+sudo usermod -aG gpio,video,render,netdev "$USER_NAME"
+if [ ! -f "$APPDIR/.env" ]; then
+  cp "$APPDIR/.env.example" "$APPDIR/.env"
+  chmod 600 "$APPDIR/.env"
+  echo "   Created $APPDIR/.env - EDIT IT to set SETTINGS_PASSWORD, then: sudo systemctl restart plane-tracker"
+fi
 
 echo "==> systemd service"
 sed -e "s|@USER@|$USER_NAME|g" -e "s|@APPDIR@|$APPDIR|g" -e "s|@UID@|$USER_ID|g" \

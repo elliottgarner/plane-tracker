@@ -2,23 +2,25 @@
 import asyncio
 import logging
 import re
+import subprocess
+import sys
 import threading
 import time
 from contextlib import asynccontextmanager
 from datetime import datetime
 
 import httpx
-from fastapi import Body, FastAPI, HTTPException
+from fastapi import Body, Depends, FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from .collector import Collector
-from .config import LOGO_DIR, STATIC_DIR, cfg
+from .config import BASE_DIR, DATA_DIR, LOGO_DIR, STATIC_DIR, cfg
 from .display_power import DisplayPower
 from .enricher import Enricher, route_progress
 from .geo import compass
 from .hardware_controls import HardwareControls
-from . import refbuild
+from . import auth, refbuild, wifi
 from .presence import PresenceManager
 from .stats import StatsLogger
 from .tracker import Tracker
@@ -297,7 +299,63 @@ async def api_get_config():
     return cfg.snapshot()
 
 
-@app.post("/api/config")
+@app.get("/api/auth")
+async def api_auth(request: Request):
+    return {"required": auth.configured(), "authed": auth.is_authed(request)}
+
+
+@app.post("/api/login")
+async def api_login(request: Request, response: Response, body: dict = Body(...)):
+    token = auth.check_login(request, str(body.get("password", "")))
+    response.set_cookie(auth.COOKIE, token, max_age=auth.MAX_AGE, httponly=True, samesite="lax")
+    return {"ok": True}
+
+
+@app.post("/api/logout")
+async def api_logout(response: Response):
+    response.delete_cookie(auth.COOKIE)
+    return {"ok": True}
+
+
+# ---- Wi-Fi (NetworkManager). Strict auth: needs SETTINGS_PASSWORD set *and* a logged-in session ----
+def _wifi_guard():
+    if not wifi.available():
+        raise HTTPException(501, "Wi-Fi management needs NetworkManager (nmcli) - Raspberry Pi OS only")
+
+
+@app.get("/api/wifi", dependencies=[Depends(auth.require_strict)])
+async def api_wifi():
+    _wifi_guard()
+    return await asyncio.to_thread(wifi.status)
+
+
+@app.post("/api/wifi/scan", dependencies=[Depends(auth.require_strict)])
+async def api_wifi_scan():
+    _wifi_guard()
+    return {"networks": await asyncio.to_thread(wifi.scan, True)}
+
+
+@app.post("/api/wifi/connect", dependencies=[Depends(auth.require_strict)])
+async def api_wifi_connect(body: dict = Body(...)):
+    _wifi_guard()
+    try:
+        wifi.start_connect(str(body.get("ssid", "")), str(body.get("password", "")), bool(body.get("hidden")))
+    except (ValueError, RuntimeError) as e:
+        raise HTTPException(400, str(e))
+    return {"ok": True, "state": "connecting"}
+
+
+@app.post("/api/wifi/forget", dependencies=[Depends(auth.require_strict)])
+async def api_wifi_forget(body: dict = Body(...)):
+    _wifi_guard()
+    try:
+        await asyncio.to_thread(wifi.forget, str(body.get("name", "")))
+    except (ValueError, RuntimeError) as e:
+        raise HTTPException(400, str(e))
+    return {"ok": True}
+
+
+@app.post("/api/config", dependencies=[Depends(auth.require_auth)])
 async def api_set_config(patch: dict = Body(...)):
     try:
         changed = cfg.update(patch)
@@ -318,14 +376,46 @@ async def api_control(body: dict = Body(...)):
     return build_state()
 
 
-@app.post("/api/reload")
+UPDATE_LOG = DATA_DIR / "update.log"
+_update_proc = None
+
+
+@app.post("/api/update", dependencies=[Depends(auth.require_auth)])
+async def api_update():
+    """Run deploy/update.sh detached: git pull, install deps if needed, restart the service."""
+    global _update_proc
+    script = BASE_DIR / "deploy" / "update.sh"
+    if sys.platform == "win32" or not script.exists():
+        raise HTTPException(501, "updates run on the Pi only")
+    if _update_proc and _update_proc.poll() is None:
+        return {"ok": True, "running": True}
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    out = open(UPDATE_LOG, "w")
+    # own session: it must survive the service restart it triggers at the end
+    _update_proc = subprocess.Popen(["bash", str(script)], cwd=BASE_DIR, stdout=out, stderr=subprocess.STDOUT,
+                                    start_new_session=True)
+    return {"ok": True, "running": True, "version": APP_VERSION}
+
+
+@app.get("/api/update/status", dependencies=[Depends(auth.require_auth)])
+async def api_update_status():
+    running = bool(_update_proc and _update_proc.poll() is None)
+    try:
+        log_text = UPDATE_LOG.read_text("utf-8", "replace")[-1500:]
+    except OSError:
+        log_text = ""
+    return {"running": running, "exit_code": None if running or not _update_proc else _update_proc.returncode,
+            "log": log_text, "version": APP_VERSION}
+
+
+@app.post("/api/reload", dependencies=[Depends(auth.require_auth)])
 async def api_reload():
     """Make every open dashboard (e.g. the kiosk) reload itself on its next tick."""
     ui.reload_token += 1
     return {"ok": True, "token": ui.reload_token}
 
 
-@app.post("/api/display/{state}")
+@app.post("/api/display/{state}", dependencies=[Depends(auth.require_auth)])
 async def api_display(state: str):
     if state not in ("on", "off"):
         raise HTTPException(400, "state must be on|off")
@@ -393,8 +483,9 @@ async def index():
 
 
 @app.get("/settings")
-async def settings_page():
-    return FileResponse(STATIC_DIR / "settings.html", headers={"Cache-Control": "no-cache"})
+async def settings_page(request: Request):
+    page = "settings.html" if auth.is_authed(request) else "login.html"
+    return FileResponse(STATIC_DIR / page, headers={"Cache-Control": "no-store"})
 
 
 @app.get("/favicon.ico")

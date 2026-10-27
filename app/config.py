@@ -9,6 +9,25 @@ from pathlib import Path
 log = logging.getLogger("config")
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+def _load_dotenv(path=BASE_DIR / ".env"):
+    """Minimal .env reader (KEY=VALUE, # comments, optional quotes). Real environment wins."""
+    try:
+        for raw in path.read_text("utf-8-sig").splitlines():
+            line = raw.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, val = line.partition("=")
+            val = val.strip()
+            if len(val) >= 2 and val[0] == val[-1] and val[0] in "\"'":
+                val = val[1:-1]
+            os.environ.setdefault(key.strip(), val)
+    except OSError:
+        pass
+
+
+_load_dotenv()
 DATA_DIR = Path(os.environ.get("PLANE_TRACKER_DATA", BASE_DIR / "data"))
 CONFIG_PATH = DATA_DIR / "config.json"
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -18,7 +37,7 @@ DEFAULTS = {
     # --- location -----------------------------------------------------------
     "home_lat": 53.50864828515752,
     "home_lon": -2.371656425587413,
-    "home_elevation_m": 20,
+    "home_elevation_m": 57,
     "range_km": 60,
     # --- presentation -------------------------------------------------------
     "units": "imperial",            # metric | imperial | nautical

@@ -8,7 +8,8 @@ Type=simple
 User=@USER@
 Group=@USER@
 # gpio: /dev/gpiochip*   video/render: backlight sysfs   (lgpio needs no root)
-SupplementaryGroups=gpio video render
+# netdev: lets nmcli manage Wi-Fi from the settings page (NetworkManager polkit)
+SupplementaryGroups=gpio video render netdev
 WorkingDirectory=@APPDIR@
 Environment=PLANE_TRACKER_DATA=@APPDIR@/data
 # Needed so wlr-randr / xset can reach the desktop session when the display is put to sleep.

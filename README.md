@@ -77,6 +77,12 @@ manual zoom offsets relax after 45 s. Between 00:00–05:00 (configurable) a qui
   If the compositor socket differs, set `XDG_RUNTIME_DIR`/`WAYLAND_DISPLAY` in the service file.
   A touchscreen can't wake an HDMI-off panel; the PIR/encoder do.
 * **Encoder steps:** if one click jumps several zoom levels, raise `encoder_step_divider` (e.g. 2 or 4).
-* The settings page has no login — keep it on your home LAN.
+* **Settings password:** copy `.env.example` to `.env` (git-ignored; the installer does this) and set
+  `SETTINGS_PASSWORD`, then restart the service. `/settings`, config saves, updates, reload and the screen
+  test need it; the dashboard itself stays open. Without a password the settings page is open and Wi-Fi
+  management is disabled. The site is plain HTTP, so the password isn't encrypted on your LAN.
+* **Wi-Fi from the settings page** (Pi OS / NetworkManager): scan, join, forget. A failed join (no internet
+  within ~25 s) is rolled back to the previous network automatically. Needs the service user in the `netdev`
+  group (installer does this; re-run it or `sudo usermod -aG netdev $USER` + restart).
 * Hardware paths (GPIO, PIR, encoder, wlr-randr) could not be exercised off-Pi; the app runs without them
   (warning logged) and the UI/API/demo mode were tested on a PC.
