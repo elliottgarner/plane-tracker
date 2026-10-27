@@ -76,8 +76,12 @@ class HardwareControls:
         from gpiozero import Button, RotaryEncoder
         pins = cfg["encoder_pins"]
         divider = max(1, cfg["encoder_step_divider"])
-        rotate_cw, rotate_ccw = (("zoom_in", "zoom_out") if cfg["encoder_rotate_action"] == "zoom"
-                                 else ("next", "prev"))
+        mode = cfg["encoder_rotate_action"]
+        # zoom:   turn = zoom,         click = lock/unlock
+        # cycle:  turn = change plane, click = lock/unlock
+        # hybrid: turn = zoom,         click = next plane
+        rotate_cw, rotate_ccw = (("next", "prev") if mode == "cycle" else ("zoom_in", "zoom_out"))
+        click_action = "next" if mode == "hybrid" else "toggle_lock"
         state = {"acc": 0, "last": 0.0}
 
         def step(direction):
@@ -103,7 +107,7 @@ class HardwareControls:
 
         def on_release():
             if not held["v"]:
-                self._fire("toggle_lock")
+                self._fire(click_action)
             held["v"] = False
 
         btn.when_held = on_held

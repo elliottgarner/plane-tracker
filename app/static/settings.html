@@ -74,7 +74,7 @@ const SCHEMA = [
   ]],
   ['Controls', [
     ['hardware_mode', 'Hardware mode', 'select', { opts: [['touch', 'Touch only'], ['encoder', 'Rotary encoder (KY-040)'], ['toggle', '3-position toggle switch']] }],
-    ['encoder_rotate_action', 'Encoder rotation does', 'select', { opts: [['zoom', 'Zoom in / out'], ['cycle', 'Cycle through planes']] }],
+    ['encoder_rotate_action', 'Encoder behaviour', 'select', { opts: [['zoom', 'Turn: zoom · Click: lock plane'], ['cycle', 'Turn: change plane · Click: lock plane'], ['hybrid', 'Hybrid — Turn: zoom · Click: change plane']], help: 'Long-press always switches between map and stats' }],
     ['long_press_seconds', 'Long-press time (s)', 'number', { step: 0.1 }],
   ]],
   ['Presence sensor & screen sleep', [

@@ -63,7 +63,7 @@ DEFAULTS = {
     "display_method": "auto",       # auto | wlr-randr | wlopm | xset | vcgencmd | backlight | none
     "display_output": "",           # e.g. HDMI-A-1 (blank = all outputs)
     "encoder_pins": {"clk": 22, "dt": 23, "sw": 27},
-    "encoder_rotate_action": "zoom",   # zoom | cycle
+    "encoder_rotate_action": "zoom",   # zoom | cycle | hybrid (rotate=zoom, click=next plane)
     "encoder_step_divider": 1,
     "long_press_seconds": 1.0,
     "toggle_pins": {"mode1": 24, "mode2": 25, "mode3": 8},
@@ -75,7 +75,7 @@ ENUMS = {
     "data_source": {"local", "web", "hybrid", "auto", "demo"},
     "hardware_mode": {"encoder", "toggle", "touch"},
     "display_method": {"auto", "wlr-randr", "wlopm", "xset", "vcgencmd", "backlight", "none"},
-    "encoder_rotate_action": {"zoom", "cycle"},
+    "encoder_rotate_action": {"zoom", "cycle", "hybrid"},
 }
 RANGES = {
     "home_lat": (-90, 90), "home_lon": (-180, 180), "home_elevation_m": (-400, 9000),
