@@ -81,6 +81,9 @@ DEFAULTS = {
     "pir_timeout_min": 10,
     "display_method": "auto",       # auto | wlr-randr | wlopm | xset | vcgencmd | backlight | none
     "display_output": "",           # e.g. HDMI-A-1 (blank = all outputs)
+    "panel_relay_gpio": 0,          # 0 = no relay. BCM pin driving a relay/transistor that powers the panel (e.g. 26)
+    "panel_relay_active_low": True, # most relay modules switch on when the pin goes LOW
+    "panel_relay_boot_seconds": 3,  # wait after powering the panel before unblanking it
     "encoder_pins": {"clk": 22, "dt": 23, "sw": 27},
     "encoder_rotate_action": "zoom",   # zoom | cycle | hybrid (rotate=zoom, click=next plane)
     "encoder_step_divider": 1,
@@ -102,7 +105,8 @@ RANGES = {
     "airport_zone_km": (1, 30), "airport_ceiling_ft": (200, 10000),
     "max_focus_seconds": (20, 3600), "heli_focus_seconds": (10, 1800), "dwell_seconds": (10, 600),
     "low_alt_ft": (200, 20000), "low_alt_radius_km": (1, 100), "pir_timeout_min": (0.5, 1440),
-    "pir_gpio": (0, 40), "stats_page_seconds": (4, 120), "encoder_step_divider": (1, 8),
+    "pir_gpio": (0, 40), "panel_relay_gpio": (0, 27), "panel_relay_boot_seconds": (0, 30),
+    "stats_page_seconds": (4, 120), "encoder_step_divider": (1, 8),
     "long_press_seconds": (0.4, 5), "start_hour": (0, 23), "end_hour": (0, 24),
     "clk": (0, 40), "dt": (0, 40), "sw": (0, 40), "mode1": (0, 40), "mode2": (0, 40), "mode3": (0, 40),
 }

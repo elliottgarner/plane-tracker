@@ -159,6 +159,8 @@ async def lifespan(_app):
             s.controls.reload()
         if changed & {"pir_enabled", "pir_gpio", "pir_timeout_min"}:
             s.presence.reload()
+        if changed & {"panel_relay_gpio", "panel_relay_active_low"}:
+            s.display.reload()
 
     async def build_reference():
         """First run: fetch airline/aircraft/airport/route tables in the background."""

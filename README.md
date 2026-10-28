@@ -38,6 +38,7 @@ open `http://<pi-ip>:5000/settings`, set home lat/lon, **Local SDR URL** (`/run/
 |---|---|
 | PIR (SR505 / HC-SR501 / AM312) | One 3-pin block on the outer column: pin 4 = 5 V, pin 6 = GND, pin 8 = OUT (GPIO14, default; change in Settings). AM312 wants 3.3 V instead (pin 1) |
 | Encoder KY-040 | CLK → GPIO22, DT → GPIO23, SW → GPIO27, `+` → **3.3 V**, GND |
+| Panel power relay (optional) | Module IN → GPIO26 (pin 37), VCC → 5 V, GND → GND; wire the panel's 5 V feed through the relay's **NO** contact. In Settings set *Panel power relay GPIO* to 26 and tick *active-low* for typical opto-isolated modules. While asleep the screen is blanked, then its power is cut; on wake power returns, the app waits *Panel boot wait*, then unblanks. Set *Screen power method* to *None* to rely on the relay alone |
 | 3-way switch | Mode 1 → GPIO24, Mode 2 → GPIO25, Mode 3 → GPIO8, common → GND. A centre-off ON-OFF-ON switch only needs positions 1 and 3; "no contact" is treated as position 2 |
 
 Behaviour: **Encoder** rotate = zoom (or cycle planes — setting), click = lock/unlock, long-press = Tracker ⇄ Stats.

@@ -84,8 +84,11 @@ const SCHEMA = [
     ['pir_enabled', 'Use PIR sensor', 'checkbox', {}],
     ['pir_gpio', 'PIR sensor GPIO (BCM number)', 'number', { step: 1, min: 0, max: 40, help: 'Default 14 (physical pin 8); changes apply immediately' }],
     ['pir_timeout_min', 'Screen off after no motion (min)', 'number', { step: 0.5, help: '0.5 – 1440 minutes' }],
-    ['display_method', 'Screen power method', 'select', { opts: [['auto', 'Auto-detect'], ['wlr-randr', 'Wayland: wlr-randr'], ['wlopm', 'Wayland: wlopm'], ['xset', 'X11: xset dpms'], ['vcgencmd', 'vcgencmd (legacy)'], ['backlight', 'Backlight sysfs'], ['none', 'Never switch off']] }],
+    ['display_method', 'Screen power method', 'select', { opts: [['auto', 'Auto-detect'], ['wlr-randr', 'Wayland: wlr-randr'], ['wlopm', 'Wayland: wlopm'], ['xset', 'X11: xset dpms'], ['vcgencmd', 'vcgencmd (legacy)'], ['backlight', 'Backlight sysfs'], ['none', 'None (never blank / relay only)']] }],
     ['display_output', 'Output name', 'text', { help: 'e.g. HDMI-A-1 — blank = all outputs' }],
+    ['panel_relay_gpio', 'Panel power relay GPIO (BCM, 0 = none)', 'number', { step: 1, min: 0, max: 27, help: 'Optional: a relay / transistor that cuts the panel supply when asleep. Suggested 26 (physical pin 37)' }],
+    ['panel_relay_active_low', 'Relay is active-low', 'checkbox', {}],
+    ['panel_relay_boot_seconds', 'Panel boot wait (s)', 'number', { step: 0.5, help: 'Pause after power returns before the screen is unblanked' }],
   ]],
 ];
 const form = document.getElementById('form'), msg = document.getElementById('msg');

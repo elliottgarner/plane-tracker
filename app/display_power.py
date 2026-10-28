@@ -6,6 +6,8 @@ import re
 import shutil
 import subprocess
 import sys
+import threading
+import time
 
 from .config import cfg
 
@@ -51,6 +53,41 @@ class DisplayPower:
     def __init__(self):
         self.is_on = True
         self._method = None
+        self._lock = threading.Lock()
+        self._relay = None
+        self._relay_key = None
+        self.reload()
+
+    # -- optional relay / transistor that cuts the panel's own power ------------------
+    def reload(self):
+        """(Re)open the relay pin from config; the panel is left powered."""
+        key = (cfg["panel_relay_gpio"], cfg["panel_relay_active_low"])
+        if key == self._relay_key:
+            return
+        with self._lock:
+            self._close_relay()
+            self._relay_key = key
+            pin, active_low = key
+            if not pin or sys.platform == "win32":
+                return
+            try:
+                from gpiozero import OutputDevice
+                # "on" = panel powered; initial_value=True so it is never dark while we start up
+                self._relay = OutputDevice(pin, active_high=not active_low, initial_value=True)
+                self.is_on = True
+                log.info("Panel power relay on GPIO%s (%s)", pin, "active-low" if active_low else "active-high")
+            except Exception as e:
+                self._relay = None
+                log.warning("Panel relay unavailable (%s) - using software screen blanking only", e)
+
+    def _close_relay(self):
+        if self._relay:
+            try:
+                self._relay.on()   # never leave the panel unpowered
+                self._relay.close()
+            except Exception:
+                pass
+        self._relay = None
 
     # -- individual back-ends: each returns True on success ----------------------
     def _wlr_randr(self, on):
@@ -107,16 +144,10 @@ class DisplayPower:
     METHODS = {"wlr-randr": "_wlr_randr", "wlopm": "_wlopm", "xset": "_xset",
                "vcgencmd": "_vcgencmd", "backlight": "_backlight"}
 
-    def set(self, on: bool) -> bool:
-        if on == self.is_on and self._method:
-            return True
-        if sys.platform == "win32":
-            log.info("[dev] display %s", "ON" if on else "OFF")
-            self.is_on = on
-            return True
+    def _software(self, on):
+        """Blank/unblank via the compositor, DPMS or backlight. True on success."""
         choice = cfg["display_method"]
         if choice == "none":
-            self.is_on = on
             return True
         order = [choice] if choice != "auto" else (
             [self._method] if self._method else ["wlr-randr", "wlopm", "xset", "vcgencmd", "backlight"])
@@ -125,8 +156,32 @@ class DisplayPower:
                 if self._method != name:
                     log.info("Display control via %s", name)
                 self._method = name
-                self.is_on = on
-                log.info("Display %s", "ON" if on else "OFF")
                 return True
         log.error("No working display power method (tried %s)", order)
         return False
+
+    def set(self, on: bool) -> bool:
+        with self._lock:
+            if on == self.is_on and (self._method or self._relay):
+                return True
+            if sys.platform == "win32":
+                log.info("[dev] display %s", "ON" if on else "OFF")
+                self.is_on = on
+                return True
+            if self._relay is None:
+                ok = self._software(on)
+                if ok:
+                    self.is_on = on
+                    log.info("Display %s", "ON" if on else "OFF")
+                return ok
+            # Relay fitted: blank first then cut power; power up, let the panel wake, then unblank.
+            if on:
+                self._relay.on()
+                time.sleep(cfg["panel_relay_boot_seconds"])
+                self._software(True)
+            else:
+                self._software(False)
+                self._relay.off()
+            self.is_on = on
+            log.info("Display %s (relay)", "ON" if on else "OFF")
+            return True
