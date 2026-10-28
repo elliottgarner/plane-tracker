@@ -36,7 +36,7 @@ open `http://<pi-ip>:5000/settings`, set home lat/lon, **Local SDR URL** (`/run/
 ## Wiring (BCM numbers; all inputs use internal pull-ups, switches go to GND)
 | Part | Pins |
 |---|---|
-| PIR (AM312 / HC-SR501) | OUT → GPIO17 (pin 11), VCC → 5 V (HC-SR501) or 3.3 V (AM312), GND |
+| PIR (SR505 / HC-SR501 / AM312) | One 3-pin block on the outer column: pin 4 = 5 V, pin 6 = GND, pin 8 = OUT (GPIO14, default; change in Settings). AM312 wants 3.3 V instead (pin 1) |
 | Encoder KY-040 | CLK → GPIO22, DT → GPIO23, SW → GPIO27, `+` → **3.3 V**, GND |
 | 3-way switch | Mode 1 → GPIO24, Mode 2 → GPIO25, Mode 3 → GPIO8, common → GND. A centre-off ON-OFF-ON switch only needs positions 1 and 3; "no contact" is treated as position 2 |
 

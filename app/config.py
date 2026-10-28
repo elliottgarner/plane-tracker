@@ -77,7 +77,7 @@ DEFAULTS = {
     # --- hardware -----------------------------------------------------------
     "hardware_mode": "touch",       # encoder | toggle | touch
     "pir_enabled": True,
-    "pir_gpio": 17,
+    "pir_gpio": 14,                 # physical pin 8: sits in one 3-pin block with 5V (pin 4) and GND (pin 6)
     "pir_timeout_min": 10,
     "display_method": "auto",       # auto | wlr-randr | wlopm | xset | vcgencmd | backlight | none
     "display_output": "",           # e.g. HDMI-A-1 (blank = all outputs)
