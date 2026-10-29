@@ -28,7 +28,8 @@ pir_dia    = 10.5; // HC-SR505 dome hole (dome ~10 mm)
 pir_board  = [10, 23, 12]; // PCB footprint (w,h) + depth behind face
 enc_shaft  = 7.2;  // KY-040 shaft thread hole (M7 bushing)
 pir_pocket = 3.6;  // total extra width/height of the PIR pocket over the board (1.5 mm per side + clr)
-enc_pcb    = [26, 19]; // KY-040 PCB w,h
+enc_pcb    = [26, 19];
+enc_extra  = 3;    // extra recess length toward the bottom edge // KY-040 PCB w,h
 enc_shaft_off = 6; // shaft centre from PCB edge
 
 // ---------------- SHELL ----------------
@@ -45,7 +46,10 @@ pi_w = 85; pi_h = 56;
 pi_holes = [[3.5,3.5],[61.5,3.5],[3.5,52.5],[61.5,52.5]]; // 58 x 49 pattern
 standoff_h = 5; standoff_d = 6; pi_screw_d = 2.6;
 
-usbc_slot = [10, 10];   // rear-plate opening for the USB-C cable + plug body
+// DC005 (5.5x2.1 mm) barrel jack: body ~9 x 11 mm; the jack is pushed in from inside and
+// hot-glued, so the rear-plate hole is the body cross-section plus ~1 mm clearance.
+dc_hole = [10, 12];     // [x, y] opening in the rear plate
+dc_off  = [11.2, -22];  // jack centre relative to the Pi origin (x along the Pi, y below it)
 
 // ---------------- derived ----------------
 // `rim` = solid plastic around the panel on the top, bottom and screen-side edges, so the
@@ -64,7 +68,9 @@ posts = concat(
 // Left control column centre
 ctl_cx = -out_w/2 + wall + left_bezel/2 - 0;
 // Pi board origin (its corner nearest the USB-C port) inside the back shell
-pi_x0 = pan_cx - pi_w/2 + 10;
+// Pi sits at the far (screen-side) end, 8 mm in from the wall, so there is a big open area
+// between it and the PIR/encoder column for slack in the sensor wiring.
+pi_x0 = out_w/2 - wall - 8 - pi_w;
 pi_y0 = -pi_h/2;
 pir_y = 46;
 enc_y = 22;
@@ -102,9 +108,12 @@ module front() {
                 cube([pir_board[0]+pir_pocket, pir_board[1]+pir_pocket, scr_t + clr + 1]);
         // Encoder: encoder body sits against the plate underside and is clamped by the
         // bushing nut on the front; the PCB hangs behind it.
-        translate([ctl_cx, enc_y, face_t])
-            translate([-(enc_pcb[0]+clr)/2, -(enc_pcb[1]+clr)/2, 0])
-                cube([enc_pcb[0]+clr, enc_pcb[1]+clr, scr_t + clr + 1]);
+        // The recess runs through to the panel pocket (no wall) for wire clearance, and is
+        // enc_extra mm longer toward the bottom edge so the full PCB fits.
+        enc_x0 = ctl_cx - (enc_pcb[0] + clr)/2;
+        enc_x1 = pan_cx - (scr_w + 2*clr)/2 + 1;   // overlaps the panel pocket edge
+        translate([enc_x0, enc_y - (enc_pcb[1] + clr)/2 - enc_extra, face_t])
+            cube([enc_x1 - enc_x0, enc_pcb[1] + clr + enc_extra, scr_t + clr + 1]);
     }
 }
 
@@ -121,9 +130,9 @@ module back_body() {
         for (i = [-3:3]) for (sx = [-1,1])
             translate([sx*(out_w/2 - wall/2), i*14, h/2 + 4])
                 cube([wall*2, 8, h-18], center=true);
-        // USB-C power cable: slot in the rear plate beside the Pi's USB-C port
-        translate([pi_x0 + 11.2 - usbc_slot[0]/2, pi_y0 - usbc_slot[1] - 4, -e])
-            cube([usbc_slot[0], usbc_slot[1], wall + 2*e]);
+        // DC power jack hole through the rear plate
+        translate([pi_x0 + dc_off[0] - dc_hole[0]/2, pi_y0 + dc_off[1] - dc_hole[1]/2, -e])
+            cube([dc_hole[0], dc_hole[1], wall + 2*e]);
     }
     // Pi standoffs, board sits to the right of the left bezel region
     translate([pi_x0, pi_y0, wall])

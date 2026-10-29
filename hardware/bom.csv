@@ -1,0 +1,23 @@
+Ref,Value,Footprint,Note
+J1,Barrel jack 12V,Connector_BarrelJack:BarrelJack_Horizontal,"pin1 tip +, pin2 sleeve GND, pin3 switch (unused)"
+F1,2A PTC,Fuse:Fuse_1812_4532Metric,resettable fuse
+D1,SMBJ15A,Diode_SMD:D_SMB,"TVS on the 12V rail, K=1 A=2"
+C1,100uF 25V,Capacitor_THT:CP_Radial_D6.3mm_P2.50mm,"12V bulk, pin1 +"
+U1,"Buck module (Pi, 5.17V)",Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical,pins IN+ GND OUT+ EN - CHECK YOUR MODULE'S PIN ORDER
+U2,"Buck module (display, 5.0V)",Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical,pins IN+ GND OUT+ EN - CHECK YOUR MODULE'S PIN ORDER
+C2,100uF 10V,Capacitor_THT:CP_Radial_D6.3mm_P2.50mm,"5V_PI bulk, pin1 +"
+C3,100uF 10V,Capacitor_THT:CP_Radial_D6.3mm_P2.50mm,"5V_DISP bulk, pin1 +"
+J2,To Pi USB-C power,TerminalBlock:TerminalBlock_bornier-2_P5.08mm,"pin1 +5V_PI, pin2 GND"
+J3,To display 5V,TerminalBlock:TerminalBlock_bornier-2_P5.08mm,"pin1 +, pin2 GND"
+JP1,Display 5V bypass,Jumper:SolderJumper-2_P1.3mm_Open_RoundedPad1.0x1.5mm,close it if no relay is fitted
+J8,Relay contacts COM/NO,TerminalBlock:TerminalBlock_bornier-2_P5.08mm,"pin1 COM (5V_DISP), pin2 NO (to J3)"
+J4,Pi 40-pin socket,Connector_PinSocket_2.54mm:PinSocket_2x20_P2.54mm_Vertical,"odd pins = left column, pin1 3V3"
+J5,PIR SR505,Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical,"1 VCC, 2 OUT, 3 GND - check your module's order"
+J6,Encoder HW-040,Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical,"1 CLK, 2 DT, 3 SW, 4 +, 5 GND"
+C4,100nF,Capacitor_SMD:C_0805_2012Metric,CLK debounce (optional)
+C5,100nF,Capacitor_SMD:C_0805_2012Metric,DT debounce (optional)
+J7,Relay module header,Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical,"1 VCC, 2 IN, 3 GND (use this OR the Q1 driver)"
+R1,1k,Resistor_SMD:R_0805_2012Metric,Q1 base resistor (optional driver)
+Q1,BC337,Package_TO_SOT_THT:TO-92_Inline,"1 C, 2 B, 3 E (optional driver)"
+D2,1N4148,Diode_SMD:D_SOD-123,"flyback, K=1 A=2 (optional driver)"
+J9,Relay coil (bare relay),Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical,"1 +5V_PI, 2 Q1 collector (optional driver)"
