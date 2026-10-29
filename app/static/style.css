@@ -14,6 +14,15 @@ body.cursor-active button { cursor: pointer; }
 #app { width: 100vw; height: 100vh; position: relative; }
 [hidden] { display: none !important; }
 
+/* ---------- screen rotation (Settings > Display). Touch follows because the browser maps it. ---------- */
+html.rot-180 #app { transform: rotate(180deg); }
+html.rot-90 #app, html.rot-270 #app { position: absolute; top: 0; left: 0; width: 100vh; height: 100vw; transform-origin: 0 0; }
+html.rot-90 #app { transform: translateX(100vw) rotate(90deg); }
+html.rot-270 #app { transform: translateY(100vh) rotate(-90deg); }
+/* portrait mounting: map above, card below */
+html.rot-90 #tracker, html.rot-270 #tracker { grid-template-columns: 1fr; grid-template-rows: 40% 60%; }
+html.rot-90 #map-panel, html.rot-270 #map-panel { border-right: 0; border-bottom: 1px solid var(--line); }
+
 /* ---------- layout: 58 / 42 ---------- */
 #tracker { position: absolute; inset: 0; display: grid; grid-template-columns: 58% 42%; }
 #map-panel { position: relative; background: #05080b; overflow: hidden; border-right: 1px solid var(--line); }

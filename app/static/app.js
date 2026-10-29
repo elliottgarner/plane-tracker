@@ -45,6 +45,13 @@ const TILES = {
   satellite: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', 'Tiles © Esri', { maxNativeZoom: 17 }],
 };
 
+function applyRotation() {
+  const r = String(CFG.screen_rotation || '0'), cl = document.documentElement.classList;
+  ['rot-90', 'rot-180', 'rot-270'].forEach((c) => cl.remove(c));
+  if (r !== '0') cl.add('rot-' + r);
+  if (map) setTimeout(() => { map.invalidateSize(false); viewInit = false; }, 50);
+}
+
 function initMap() {
   map = L.map('map', {
     zoomControl: false, attributionControl: false, zoomSnap: 0.25, zoomDelta: 0.5, fadeAnimation: false,
@@ -357,6 +364,7 @@ async function tick() {
     window.__ver = stamp;
     if (st.cfg_rev !== cfgRev) {
       await loadConfig();
+      applyRotation();
       if (!map) initMap();
       applyMapConfig();
       cfgRev = st.cfg_rev;

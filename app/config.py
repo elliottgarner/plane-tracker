@@ -43,6 +43,7 @@ DEFAULTS = {
     "units": "imperial",            # metric | imperial | nautical
     "tile_style": "dark",           # dark | positron | osm | satellite
     "tile_url": "",                 # optional keyed provider, e.g. https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png?api_key=...
+    "screen_rotation": "0",         # 0 | 90 | 180 | 270 degrees clockwise, applied in the page (touch follows)
     "stats_page_seconds": 12,
     "stats_screensaver": {"enabled": True, "start_hour": 0, "end_hour": 5},
     # --- data ---------------------------------------------------------------
@@ -94,6 +95,7 @@ DEFAULTS = {
 ENUMS = {
     "units": {"metric", "imperial", "nautical"},
     "tile_style": {"dark", "positron", "osm", "satellite"},
+    "screen_rotation": {"0", "90", "180", "270"},
     "data_source": {"local", "web", "hybrid", "auto", "demo"},
     "hardware_mode": {"encoder", "toggle", "touch"},
     "display_method": {"auto", "wlr-randr", "wlopm", "xset", "vcgencmd", "backlight", "none"},

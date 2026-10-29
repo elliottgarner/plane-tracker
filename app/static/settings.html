@@ -48,6 +48,7 @@ const SCHEMA = [
   ]],
   ['Display', [
     ['units', 'Units', 'select', { opts: [['imperial', 'Imperial (ft · mph · mi)'], ['nautical', 'Nautical / aviation (ft · kts · nm)'], ['metric', 'Metric (m · km/h · km)']] }],
+    ['screen_rotation', 'Screen rotation', 'select', { opts: [['0', 'Normal (landscape)'], ['180', 'Upside down (landscape, flipped)'], ['90', 'Portrait, rotated 90° clockwise'], ['270', 'Portrait, rotated 270° clockwise']], help: 'Rotates the dashboard page; touch follows. Portrait stacks the map above the card' }],
     ['tile_style', 'Map style', 'select', { opts: [['dark', 'Dark Matter'], ['positron', 'Positron (light)'], ['osm', 'OpenStreetMap'], ['satellite', 'Satellite']] }],
     ['tile_url', 'Custom tile URL', 'text', { help: 'Optional. Overrides the style above (use {z}/{x}/{y}); needed for keyed providers' }],
     ['stats_page_seconds', 'Stats page time (s)', 'number', { step: 1 }],
