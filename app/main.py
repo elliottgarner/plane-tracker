@@ -11,7 +11,7 @@ from datetime import datetime
 
 import httpx
 from fastapi import Body, Depends, FastAPI, HTTPException, Request, Response
-from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from .collector import Collector
@@ -481,7 +481,12 @@ async def api_logo(icao: str):
 # pages
 @app.get("/")
 async def index():
-    return FileResponse(STATIC_DIR / "index.html", headers={"Cache-Control": "no-cache"})
+    # version-stamp the assets so a kiosk browser can never keep running a stale app.js / style.css
+    html = (STATIC_DIR / "index.html").read_text("utf-8")
+    stamp = f"?v={APP_VERSION}-{ui.reload_token}"
+    for asset in ("style.css", "icons.js", "app.js"):
+        html = html.replace(f"/static/{asset}", f"/static/{asset}{stamp}")
+    return HTMLResponse(html, headers={"Cache-Control": "no-cache"})
 
 
 @app.get("/settings")
@@ -495,4 +500,13 @@ async def favicon():
     return RedirectResponse("/static/favicon.svg")
 
 
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+class _RevalidatingStatic(StaticFiles):
+    """Our own assets always revalidate (cheap ETag check); vendored libraries may be cached."""
+    async def get_response(self, path, scope):
+        resp = await super().get_response(path, scope)
+        if not path.startswith("vendor/"):
+            resp.headers["Cache-Control"] = "no-cache"
+        return resp
+
+
+app.mount("/static", _RevalidatingStatic(directory=STATIC_DIR), name="static")
