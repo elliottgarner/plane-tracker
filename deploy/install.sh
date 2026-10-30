@@ -66,6 +66,7 @@ if [ -d "$HOME_DIR/.config/labwc" ] || command -v labwc >/dev/null; then
   mkdir -p "$HOME_DIR/.config/labwc"
   grep -q "plane-tracker kiosk" "$HOME_DIR/.config/labwc/autostart" 2>/dev/null || \
     echo "$APPDIR/deploy/kiosk.sh &   # plane-tracker kiosk" >> "$HOME_DIR/.config/labwc/autostart"
+  bash "$APPDIR/deploy/hide_cursor.sh" "$HOME_DIR"
   echo "   labwc autostart updated"
 elif [ -f "$HOME_DIR/.config/wayfire.ini" ] || command -v wayfire >/dev/null; then
   if ! grep -q "plane-tracker" "$HOME_DIR/.config/wayfire.ini" 2>/dev/null; then
