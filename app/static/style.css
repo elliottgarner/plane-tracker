@@ -8,7 +8,8 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg); color: var(--text);
   font-family: var(--sans); cursor: none; -webkit-user-select: none; user-select: none; }
-/* cursor is hidden only after 3 s without mouse movement (see app.js) */
+/* pointer is always hidden, even over buttons / map markers; "c" toggles it for debugging (see app.js) */
+body:not(.cursor-active), body:not(.cursor-active) * { cursor: none !important; }
 body.cursor-active, body.cursor-active * { cursor: default; }
 body.cursor-active button { cursor: pointer; }
 #app { width: 100vw; height: 100vh; position: relative; }

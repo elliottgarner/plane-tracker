@@ -391,16 +391,10 @@ function boot() {
   }));
   $('#stats').addEventListener('click', () => control('next'));
   $('#back-btn').addEventListener('click', (e) => { e.stopPropagation(); control('set_view', { view: 'tracker' }); });
-  // show the mouse pointer on movement, hide it again after 3 s idle (kiosk-friendly)
-  let curTimer;
-  window.addEventListener('mousemove', () => {
-    document.body.classList.add('cursor-active');
-    clearTimeout(curTimer);
-    curTimer = setTimeout(() => document.body.classList.remove('cursor-active'), 3000);
-  });
+  // the pointer stays hidden (enclosed kiosk); press "c" on a keyboard to show/hide it for debugging
   // keyboard for development / USB keypads
   const keys = { ArrowUp: 'zoom_in', ArrowDown: 'zoom_out', ArrowRight: 'next', ArrowLeft: 'prev', Enter: 'toggle_lock', m: 'toggle_view' };
-  window.addEventListener('keydown', (e) => { if (keys[e.key]) { e.preventDefault(); control(keys[e.key]); } if (e.key === 'c') document.body.classList.toggle('show-cursor'); });
+  window.addEventListener('keydown', (e) => { if (keys[e.key]) { e.preventDefault(); control(keys[e.key]); } if (e.key === 'c') document.body.classList.toggle('cursor-active'); });
   requestAnimationFrame(frame);
   tick();
 }
