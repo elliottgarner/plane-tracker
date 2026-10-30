@@ -38,7 +38,8 @@ sudo usermod -aG gpio,video,render,netdev "$USER_NAME"
 # NetworkManager (polkit) refuses to add/modify Wi-Fi profiles for a headless service otherwise
 # ("Insufficient privileges"); allow only this user, and only NetworkManager actions.
 sudo mkdir -p /etc/polkit-1/rules.d
-cat <<EOF | sudo tee /etc/polkit-1/rules.d/50-plane-tracker-nm.rules >/dev/null
+sudo rm -f /etc/polkit-1/rules.d/50-plane-tracker-nm.rules   # older name; rules run in filename order, so ours must sort first
+cat <<EOF | sudo tee /etc/polkit-1/rules.d/00-plane-tracker-nm.rules >/dev/null
 polkit.addRule(function(action, subject) {
   if (action.id.indexOf("org.freedesktop.NetworkManager.") == 0 && subject.user == "$USER_NAME") {
     return polkit.Result.YES;
