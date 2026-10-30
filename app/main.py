@@ -347,6 +347,18 @@ async def api_wifi_connect(body: dict = Body(...)):
     return {"ok": True, "state": "connecting"}
 
 
+@app.post("/api/wifi/add", dependencies=[Depends(auth.require_strict)])
+async def api_wifi_add(body: dict = Body(...)):
+    """Save a network for later without connecting to it."""
+    _wifi_guard()
+    try:
+        result = await asyncio.to_thread(
+            wifi.add_profile, str(body.get("ssid", "")), str(body.get("password", "")), bool(body.get("hidden")))
+    except (ValueError, RuntimeError) as e:
+        raise HTTPException(400, str(e))
+    return {"ok": True, "result": result}
+
+
 @app.post("/api/wifi/forget", dependencies=[Depends(auth.require_strict)])
 async def api_wifi_forget(body: dict = Body(...)):
     _wifi_guard()

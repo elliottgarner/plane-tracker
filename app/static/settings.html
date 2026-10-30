@@ -143,12 +143,15 @@ async function refreshWifi() {
     '<div id="wf-list"></div>' +
     '<div class="f"><label for="wf-ssid">Network name (SSID)</label><input id="wf-ssid" placeholder="choose from the list or type a hidden network"></div>' +
     '<div class="f"><label for="wf-pw">Password<small>blank for open networks</small></label><input id="wf-pw" type="password" autocomplete="off"></div>' +
-    '<div class="row"><button type="button" id="wf-join">Connect</button><span id="wf-msg" style="align-self:center"></span></div>' +
+    '<div class="f"><label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="wf-hidden" style="width:auto"> Hidden network (SSID not broadcast)</label></div>' +
+    '<div class="row"><button type="button" id="wf-join">Connect now</button><button type="button" class="ghost" id="wf-add">Save for later</button><span id="wf-msg" style="align-self:center"></span></div>' +
+    '<p style="color:var(--dim);font-size:12px"><b>Save for later</b> stores a network you can’t reach from here (e.g. the place you’re posting the Pi to). It won’t switch networks now, and the Pi joins it automatically when it’s in range.</p>' +
     '<p style="color:var(--dim);font-size:12px">This page may drop while the Pi switches network. If the new network doesn’t work within about a minute the Pi reverts to the previous one automatically.</p>' +
     '<label style="color:var(--dim);font-size:12px;text-transform:uppercase;letter-spacing:.08em">Saved networks</label>' +
     '<div id="wf-saved">' + (j.saved.length ? j.saved.map(s => '<div class="row" style="align-items:center;margin:6px 0"><span style="flex:1">' + esc(s.name) + (s.active ? ' <small class="ok">● active</small>' : '') + '</span>' + (s.active ? '' : '<button type="button" class="ghost" data-forget="' + esc(s.name) + '">Forget</button>') + '</div>').join('') : '<p style="color:var(--dim)">none</p>') + '</div>';
   document.getElementById('wf-scan').onclick = scanWifi;
   document.getElementById('wf-join').onclick = joinWifi;
+  document.getElementById('wf-add').onclick = saveWifi;
   body.querySelectorAll('[data-forget]').forEach(b => b.onclick = async () => {
     const rr = await fetch('/api/wifi/forget', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: b.dataset.forget }) });
     if (!rr.ok) flash((await rr.json()).detail, false); refreshWifi();
@@ -168,11 +171,21 @@ async function scanWifi() {
 async function joinWifi() {
   const ssid = document.getElementById('wf-ssid').value.trim(), pw = document.getElementById('wf-pw').value, msgEl = document.getElementById('wf-msg');
   if (!ssid) { msgEl.textContent = 'Enter a network name'; msgEl.className = 'err'; return; }
-  const r = await fetch('/api/wifi/connect', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ssid, password: pw }) });
+  const r = await fetch('/api/wifi/connect', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ssid, password: pw, hidden: document.getElementById('wf-hidden').checked }) });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) { msgEl.textContent = j.detail || 'Failed'; msgEl.className = 'err'; return; }
   document.getElementById('wf-pw').value = '';
   pollWifi();
+}
+async function saveWifi() {
+  const ssid = document.getElementById('wf-ssid').value.trim(), pw = document.getElementById('wf-pw').value, msgEl = document.getElementById('wf-msg');
+  if (!ssid) { msgEl.textContent = 'Enter a network name'; msgEl.className = 'err'; return; }
+  const r = await fetch('/api/wifi/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ssid, password: pw, hidden: document.getElementById('wf-hidden').checked }) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { msgEl.textContent = j.detail || 'Failed'; msgEl.className = 'err'; return; }
+  document.getElementById('wf-pw').value = '';
+  await refreshWifi();
+  const m = document.getElementById('wf-msg'); if (m) { m.textContent = 'Saved “' + ssid + '” - the Pi will join it when it’s in range'; m.className = 'ok'; }
 }
 async function pollWifi() {
   const msgEl = () => document.getElementById('wf-msg');

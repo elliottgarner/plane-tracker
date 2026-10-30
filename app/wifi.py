@@ -150,6 +150,30 @@ def _connect(ssid, password, hidden):
         _set("failed", str(e))
 
 
+def add_profile(ssid: str, password: str = "", hidden: bool = False) -> str:
+    """Save a network without joining it, so the Pi connects by itself when it is in range
+    (e.g. configure the destination's Wi-Fi at home, post the Pi, plug it in on arrival).
+    Returns "created" or "updated"."""
+    if not ssid or len(ssid.encode()) > 32:
+        raise ValueError("SSID must be 1-32 bytes")
+    if password and not (8 <= len(password) <= 63):
+        raise ValueError("Wi-Fi password must be 8-63 characters")
+    exists = ssid in dict(saved())
+    if exists:
+        args = ["con", "modify", "id", ssid]
+    else:
+        args = ["con", "add", "type", "wifi", "ifname", "*", "con-name", ssid, "ssid", ssid]
+    args += ["connection.autoconnect", "yes", "802-11-wireless.hidden", "yes" if hidden else "no"]
+    if password:                                # blank password = open network (no security block)
+        args += ["wifi-sec.key-mgmt", "wpa-psk", "wifi-sec.psk", password]
+    p = _nmcli(*args)
+    if p.returncode != 0:
+        lines = (p.stderr or p.stdout).strip().splitlines()
+        raise RuntimeError(lines[-1] if lines else "nmcli failed")
+    log.info("Saved Wi-Fi profile %r (%s, not connected)", ssid, "hidden" if hidden else "visible")
+    return "updated" if exists else "created"
+
+
 def forget(name: str):
     names = dict(saved())
     if name not in names:
