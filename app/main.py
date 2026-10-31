@@ -20,7 +20,7 @@ from .display_power import DisplayPower
 from .enricher import Enricher, route_progress
 from .geo import compass
 from .hardware_controls import HardwareControls
-from . import auth, refbuild, wifi
+from . import auth, locations, refbuild, wifi
 from .presence import PresenceManager
 from .stats import StatsLogger
 from .tracker import Tracker
@@ -43,6 +43,7 @@ class UI:
         self.stats_page_ts = time.time()
         self.rev = 0
         self.reload_token = int(time.time())   # differs after every service restart too
+        self.notice = {"text": "", "ts": 0.0}  # short on-screen message (e.g. location switched)
         self.lock = threading.RLock()
 
 
@@ -60,6 +61,17 @@ def _git_version():
 
 
 APP_VERSION = _git_version()   # the kiosk page reloads itself when this changes after an update
+
+
+def switch_location(name=None):
+    """Make a saved location (or, with no name, the next one) the live home. Returns its name or None."""
+    item = locations.use(name) if name else locations.cycle()
+    with ui.lock:
+        t = app_state.tracker
+        t.aircraft, t.selected, t.locked = {}, None, False      # nothing from the old place is valid here
+        ui.zoom_offset = 0
+        ui.notice = {"text": ("Location: " + item["name"]) if item else "No other saved location", "ts": time.time()}
+    return item["name"] if item else None
 
 
 def dispatch(action, **kw):
@@ -100,6 +112,8 @@ def dispatch(action, **kw):
             app_state.schedule_override_until = now + 120 if ui.view == "tracker" else 0
         elif action == "set_filter":
             app_state.tracker.set_filter(kw.get("filter", "all"))
+        elif action == "next_location":
+            switch_location()
         elif action == "position":
             n = int(kw.get("n", 1))
             if n == 3:
@@ -153,7 +167,7 @@ async def lifespan(_app):
                 log.exception("stats flush")
 
     def on_cfg_change(changed):
-        hw = {"hardware_mode", "encoder_pins", "toggle_pins", "long_press_seconds",
+        hw = {"hardware_mode", "encoder_pins", "toggle_pins", "long_press_seconds", "location_hold_seconds",
               "encoder_rotate_action", "encoder_step_divider"}
         if changed & hw:
             s.controls.reload()
@@ -275,6 +289,7 @@ def build_state():
             "source": {"label": s.collector.source_label, "ok": s.collector.healthy,
                        "error": s.collector.last_error},
             "display_on": s.display.is_on,
+            "notice": ui.notice["text"] if now - ui.notice["ts"] < 6 else "",
             "hardware": {"mode": s.controls.active_mode, "error": s.controls.error},
         }
 
@@ -376,6 +391,45 @@ async def api_set_config(patch: dict = Body(...)):
     except ValueError as e:
         raise HTTPException(422, str(e))
     return {"ok": True, "changed": sorted(changed), "config": cfg.snapshot()}
+
+
+# ---- saved locations ----
+@app.get("/api/locations")
+async def api_locations():
+    return {"locations": locations.list_all(), "current": locations.current_name(),
+            "hold_seconds": cfg["location_hold_seconds"]}
+
+
+@app.post("/api/locations", dependencies=[Depends(auth.require_auth)])
+async def api_locations_save(body: dict = Body(...)):
+    """Save the live home position under a name, or (with lat/lon) an explicit position."""
+    try:
+        if "home_lat" in body or "lat" in body:
+            locations.save(body.get("name", ""), body.get("home_lat", body.get("lat")), body.get("home_lon", body.get("lon")),
+                           body.get("home_elevation_m", body.get("elevation_m", 0)), body.get("range_km", cfg["range_km"]))
+        else:
+            locations.save_current(body.get("name", ""))
+    except (ValueError, TypeError) as e:
+        raise HTTPException(422, str(e))
+    return await api_locations()
+
+
+@app.post("/api/locations/use", dependencies=[Depends(auth.require_auth)])
+async def api_locations_use(body: dict = Body(...)):
+    try:
+        switch_location(str(body.get("name", "")))
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+    return await api_locations()
+
+
+@app.post("/api/locations/delete", dependencies=[Depends(auth.require_auth)])
+async def api_locations_delete(body: dict = Body(...)):
+    try:
+        locations.delete(str(body.get("name", "")))
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+    return await api_locations()
 
 
 @app.post("/api/control")

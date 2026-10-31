@@ -9,7 +9,7 @@ Whatever the hardware, everything funnels into `dispatch(action, **kwargs)` with
 vocabulary so the rest of the app never knows which hardware is attached:
 
   zoom_in | zoom_out | next | prev | toggle_lock | toggle_view | set_view(view=tracker|stats)
-  set_filter(filter=all|interesting) | position(n=1..3)
+  set_filter(filter=all|interesting) | position(n=1..3) | next_location
 """
 import logging
 import threading
@@ -98,19 +98,32 @@ class HardwareControls:
         enc.when_rotated_clockwise = lambda: step(+1)
         enc.when_rotated_counter_clockwise = lambda: step(-1)
 
-        btn = Button(pins["sw"], pull_up=True, bounce_time=0.05, hold_time=cfg["long_press_seconds"])
-        held = {"v": False}
+        # press < long_press: click · long_press..location_hold: map/stats · >= location_hold: next saved location
+        # (the first two act on release, so the longer hold doesn't also flip the view on the way)
+        btn = Button(pins["sw"], pull_up=True, bounce_time=0.05)
+        press = {"t": 0.0, "timer": None, "fired": False}
+        long_s, loc_s = cfg["long_press_seconds"], cfg["location_hold_seconds"]
 
-        def on_held():
-            held["v"] = True
-            self._fire("toggle_view")
+        def on_location_hold():
+            press["fired"] = True
+            self._fire("next_location")
+
+        def on_press():
+            press.update(t=time.monotonic(), fired=False)
+            if loc_s:
+                press["timer"] = threading.Timer(loc_s, on_location_hold)
+                press["timer"].daemon = True
+                press["timer"].start()
 
         def on_release():
-            if not held["v"]:
-                self._fire(click_action)
-            held["v"] = False
+            if press["timer"]:
+                press["timer"].cancel()
+                press["timer"] = None
+            if press["fired"]:
+                return
+            self._fire("toggle_view" if time.monotonic() - press["t"] >= long_s else click_action)
 
-        btn.when_held = on_held
+        btn.when_pressed = on_press
         btn.when_released = on_release
         self._devices += [enc, btn]
 

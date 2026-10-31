@@ -184,3 +184,9 @@ html.rot-90 #map-panel, html.rot-270 #map-panel { border-right: 0; border-bottom
 .rare-list .t { font: 600 14px var(--mono); color: var(--dim); } .rare-list .c { font: 800 20px var(--mono); color: var(--amber); }
 .rare-list .d { font-size: 15px; } .rare-list .d small { display: block; color: #b98cff; font-size: 12px; margin-top: 2px; }
 .empty { color: var(--dim); font-size: 18px; margin: auto; }
+
+/* transient message (e.g. "Location: Home") */
+#notice { position: absolute; left: 50%; top: 18px; transform: translateX(-50%); z-index: 2000; max-width: 80%;
+  padding: 10px 22px; border-radius: 10px; background: rgba(10,14,19,.92); border: 1px solid var(--amber, #ffb000);
+  color: #fff; font-weight: 700; font-size: 20px; letter-spacing: .04em; pointer-events: none; opacity: 0; transition: opacity .25s; }
+#notice.show { opacity: 1; }

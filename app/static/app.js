@@ -334,8 +334,16 @@ async function refreshStats(force) {
 }
 
 /* ------------------------------------------------------------------ main loop */
+function showNotice(text) {
+  let el = $('#notice');
+  if (!el) { el = document.createElement('div'); el.id = 'notice'; $('#app').appendChild(el); }
+  el.textContent = text;
+  el.classList.toggle('show', !!text);
+}
+
 function applyState(st) {
   STATE = st;
+  showNotice(st.notice || '');
   const stats = st.view === 'stats';
   const wasHidden = $('#tracker').hidden;
   $('#tracker').hidden = stats;

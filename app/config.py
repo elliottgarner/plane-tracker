@@ -89,6 +89,7 @@ DEFAULTS = {
     "encoder_rotate_action": "zoom",   # zoom | cycle | hybrid (rotate=zoom, click=next plane)
     "encoder_step_divider": 1,
     "long_press_seconds": 1.0,
+    "location_hold_seconds": 10,    # hold the encoder button this long to switch to the next saved location (0 = off)
     "toggle_pins": {"mode1": 24, "mode2": 25, "mode3": 8},
 }
 
@@ -109,7 +110,7 @@ RANGES = {
     "low_alt_ft": (200, 20000), "low_alt_radius_km": (1, 100), "pir_timeout_min": (0.5, 1440),
     "pir_gpio": (0, 40), "panel_relay_gpio": (0, 27), "panel_relay_boot_seconds": (0, 30),
     "stats_page_seconds": (4, 120), "encoder_step_divider": (1, 8),
-    "long_press_seconds": (0.4, 5), "start_hour": (0, 23), "end_hour": (0, 24),
+    "long_press_seconds": (0.4, 5), "location_hold_seconds": (0, 60), "start_hour": (0, 23), "end_hour": (0, 24),
     "clk": (0, 40), "dt": (0, 40), "sw": (0, 40), "mode1": (0, 40), "mode2": (0, 40), "mode3": (0, 40),
 }
 

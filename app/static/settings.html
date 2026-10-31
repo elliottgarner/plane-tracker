@@ -80,6 +80,7 @@ const SCHEMA = [
     ['hardware_mode', 'Hardware mode', 'select', { opts: [['touch', 'Touch only'], ['encoder', 'Rotary encoder (KY-040)'], ['toggle', '3-position toggle switch']] }],
     ['encoder_rotate_action', 'Encoder behaviour', 'select', { opts: [['zoom', 'Turn: zoom · Click: lock plane'], ['cycle', 'Turn: change plane · Click: lock plane'], ['hybrid', 'Hybrid — Turn: zoom · Click: change plane']], help: 'Long-press always switches between map and stats' }],
     ['long_press_seconds', 'Long-press time (s)', 'number', { step: 0.1 }],
+    ['location_hold_seconds', 'Location-switch hold (s, 0 = off)', 'number', { step: 1, min: 0, max: 60, help: 'Hold the encoder button this long to jump to the next saved location' }],
   ]],
   ['Presence sensor & screen sleep', [
     ['pir_enabled', 'Use PIR sensor', 'checkbox', {}],
@@ -112,6 +113,7 @@ function build(cfg) {
     }
     form.append(fs);
   }
+  buildLocations();
   const t = document.createElement('fieldset'); t.innerHTML = '<legend>Tools</legend><div class="row"><button type="button" class="ghost" data-d="off">Screen off (test)</button><button type="button" class="ghost" data-d="on">Screen on</button></div>';
   t.querySelectorAll('button').forEach(b => b.onclick = () => fetch('/api/display/' + b.dataset.d, { method: 'POST' }).then(r => r.json()).then(j => flash(j.ok ? 'Display ' + b.dataset.d : 'No display method worked', j.ok)));
   form.append(t);
@@ -120,6 +122,44 @@ function build(cfg) {
   u.querySelector('#upd').onclick = runUpdate;
   form.append(u);
   buildWifi();
+}
+
+/* ---------------- Saved locations ---------------- */
+function buildLocations() {
+  const fs = document.createElement('fieldset');
+  fs.innerHTML = '<legend>Saved locations</legend><div id="loc-body"><p style="color:var(--dim)">Loading…</p></div>';
+  form.append(fs);
+  refreshLocations();
+}
+async function locPost(path, body) {
+  const r = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { flash(j.detail || 'Failed', false); return null; }
+  return j;
+}
+async function refreshLocations() {
+  const body = document.getElementById('loc-body');
+  const j = await (await fetch('/api/locations', { cache: 'no-store' })).json();
+  body.innerHTML =
+    '<p style="color:var(--dim);font-size:12px">Hold the encoder button for ' + (j.hold_seconds ? j.hold_seconds + ' s' : '(disabled)') + ' to jump to the next location in this list. Each location stores the latitude, longitude, elevation and range from the Location section above.</p>' +
+    '<div id="loc-list">' + (j.locations.length ? j.locations.map(l =>
+      '<div class="row" style="align-items:center;margin:6px 0"><span style="flex:1"><b>' + esc(l.name) + '</b>' + (l.name === j.current ? ' <small class="ok">● active</small>' : '') +
+      '<small style="display:block;color:var(--dim)">' + l.home_lat.toFixed(4) + ', ' + l.home_lon.toFixed(4) + ' · ' + l.range_km + ' km</small></span>' +
+      (l.name === j.current ? '' : '<button type="button" class="ghost" data-use="' + esc(l.name) + '">Use</button>') +
+      '<button type="button" class="ghost" data-del="' + esc(l.name) + '">Delete</button></div>').join('') : '<p style="color:var(--dim)">none saved yet</p>') + '</div>' +
+    '<div class="f"><label for="loc-name">Save the current location as<small>press Save first if you changed the coordinates above</small></label><input id="loc-name" maxlength="40" placeholder="e.g. Home, Parents’ house"></div>' +
+    '<div class="row"><button type="button" id="loc-save">Save location</button></div>';
+  document.getElementById('loc-save').onclick = async () => {
+    const name = document.getElementById('loc-name').value.trim();
+    if (!name) { flash('Give the location a name', false); return; }
+    if (await locPost('/api/locations', { name })) { flash('Saved “' + name + '” ✓'); refreshLocations(); }
+  };
+  body.querySelectorAll('[data-use]').forEach(b => b.onclick = async () => {
+    if (await locPost('/api/locations/use', { name: b.dataset.use })) { flash('Now using “' + b.dataset.use + '” ✓'); load(); }
+  });
+  body.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
+    if (confirm('Delete saved location “' + b.dataset.del + '”?') && await locPost('/api/locations/delete', { name: b.dataset.del })) refreshLocations();
+  });
 }
 
 /* ---------------- Wi-Fi ---------------- */
