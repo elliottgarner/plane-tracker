@@ -278,8 +278,7 @@ function renderIdle(st) {
 /* ------------------------------------------------------------------ chrome / chips / alert */
 function renderChrome(st) {
   const src = $('#chip-src');
-  src.textContent = st.source.label; src.className = 'chip ' + (st.source.ok ? 'ok' : 'bad');
-  setText('chip-count', st.count + (st.count === 1 ? ' aircraft' : ' aircraft'));
+  src.textContent = st.source.label; src.className = 'chip bad'; src.hidden = !!st.source.ok;   // only shown when the data source is failing
   $('#chip-filter').hidden = st.filter !== 'interesting';
   $('#no-data').hidden = st.source.ok;
   setText('no-data-msg', st.source.error || '');
@@ -384,7 +383,7 @@ async function tick() {
     applyState(st);
   } catch (e) {
     document.querySelector('#chip-src').textContent = 'BACKEND OFFLINE';
-    document.querySelector('#chip-src').className = 'chip bad';
+    document.querySelector('#chip-src').className = 'chip bad'; document.querySelector('#chip-src').hidden = false;
   }
   setTimeout(tick, 1000);
 }
