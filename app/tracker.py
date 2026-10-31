@@ -2,7 +2,7 @@
 import math
 import time
 
-from . import geo
+from . import classify, geo
 from .config import cfg
 from .enricher import route_plausible
 
@@ -177,6 +177,17 @@ class Tracker:
             elif f < lim:
                 self.cooldown.discard(hx)
 
+    def _is_carrier(self, r):
+        """A scheduled airline flight that is high and fast (cruising or climbing out), so it outranks
+        GA circuits and other slow, low traffic."""
+        alt, gs = r["alt_ft"], r["gs_kt"]
+        if not cfg["carrier_bonus"] or alt is None or gs is None or r["on_ground"]:
+            return False
+        m = r["meta"]
+        return (alt >= cfg["carrier_min_alt_ft"] and gs >= cfg["carrier_min_gs_kt"]
+                and classify.split_callsign(r["callsign"])[0] is not None
+                and not m["military"] and not self._is_heli(r))
+
     # ---- selection -----------------------------------------------------------
     def _rank(self, r):
         # exponential closeness: 5 km ~ 66, 12 km ~ 37, 30 km ~ 8 (proximity_km = decay length)
@@ -184,6 +195,8 @@ class Tracker:
         em = bool(r["interest"]["emergency"])
         bonus = r["interest"]["score"] if (cfg["interest_override"] or self.filter == "interesting") else 0
         pen = 0.0
+        if self._is_carrier(r):
+            bonus += cfg["carrier_bonus"]
         if not em:
             if self._is_heli(r):
                 pen += 70.0 if r["meta"]["service"] else 40.0
@@ -240,6 +253,8 @@ class Tracker:
             self.reason = rec["interest"]["reasons"][0]
         elif self.filter == "interesting":
             self.reason = "Interesting traffic"
+        elif self._is_carrier(rec):
+            self.reason = "Airliner"
         else:
             self.reason = "Closest aircraft"
         m = rec["meta"]

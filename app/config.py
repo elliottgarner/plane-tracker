@@ -79,6 +79,9 @@ DEFAULTS = {
     "heli_focus_seconds": 30,       # helicopters / emergency services
     "proximity_km": 9,           # closeness half-scale: smaller = stronger preference for nearby planes
     "interest_override": True,
+    "carrier_bonus": 60,            # rank boost for a high, fast airline flight so it takes focus from GA circuits (0 = off)
+    "carrier_min_alt_ft": 8000,
+    "carrier_min_gs_kt": 200,
     "low_alt_ft": 3000,
     "low_alt_radius_km": 8,
     # --- hardware -----------------------------------------------------------
@@ -113,6 +116,7 @@ RANGES = {
     "range_km": (5, 400), "web_poll_seconds": (1, 60), "proximity_km": (3, 60),
     "airport_zone_km": (1, 30), "airport_ceiling_ft": (200, 10000),
     "max_focus_seconds": (20, 3600), "heli_focus_seconds": (10, 1800), "dwell_seconds": (10, 600),
+    "carrier_bonus": (0, 200), "carrier_min_alt_ft": (0, 45000), "carrier_min_gs_kt": (0, 600),
     "low_alt_ft": (200, 20000), "low_alt_radius_km": (1, 100), "pir_timeout_min": (0.5, 1440),
     "pir_gpio": (0, 40), "panel_relay_gpio": (0, 27), "panel_relay_boot_seconds": (0, 30),
     "stats_page_seconds": (4, 120), "encoder_step_divider": (1, 8),
