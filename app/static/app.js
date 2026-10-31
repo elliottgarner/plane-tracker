@@ -225,7 +225,7 @@ function renderCard(st) {
   if (!cache.glyph) { cache.glyph = 1; $('#prog-glyph').innerHTML = planeSvg('jet'); }
   if (r && r.progress != null) { const [v, u] = fmtDist(r.remaining_km); setText('prog-txt', Math.round(pct * 100) + '% · ' + v + ' ' + u + ' to go'); }
   else if (inf) setText('prog-txt', (inf.kind === 'to' ? 'landing' : 'departed') + ' (inferred)');
-  else setText('prog-txt', r ? ' ' : (d.route_rejected ? 'listed route doesn’t match flight path'
+  else setText('prog-txt', r ? ' ' : (d.route_rejected ? 'listed route doesn’t match flight path' + (d.rejected_routes && d.rejected_routes.length ? ' (' + d.rejected_routes.join(', ') + ')' : '')
     : d.military ? 'military flight · no public route' : d.scheduled ? 'route unknown' : 'private / non-scheduled flight'));
 
   // aircraft

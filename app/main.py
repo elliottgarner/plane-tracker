@@ -252,7 +252,22 @@ def _detail(r, locked):
         "scheduled": m["route_lookup_ok"],
         "inferred": _inferred(r),
         "locked": locked, "route_rejected": r.get("route_rejected", False),
+        "rejected_routes": _rejected_routes(r),
     }
+
+
+def _rejected_routes(r):
+    """Listed route(s) that failed the flight-path check, as 'ORIG-DEST' strings (listed one first)."""
+    if not r.get("route_rejected"):
+        return []
+    cands = [r["meta"]["route"]] + app_state.enricher.alt_routes(r["callsign"])
+    codes = lambda ap: (ap or {}).get("icao") or (ap or {}).get("iata") or "?"
+    out = []
+    for c in cands:
+        s = f"{codes(c['origin'])}-{codes(c['dest'])}"
+        if s not in out:
+            out.append(s)
+    return out
 
 
 def _schedule_active(now):
