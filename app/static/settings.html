@@ -20,7 +20,13 @@
   input[type=checkbox] { width: 22px; height: 22px; } input:focus, select:focus { outline: 2px solid var(--cyan); }
   .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .bar { position: fixed; left: 0; right: 0; bottom: 0; background: rgba(10,14,19,.96); border-top: 1px solid var(--line); padding: 12px 16px; display: flex; gap: 10px; justify-content: center; align-items: center; }
-  button { background: var(--amber); color: #1b1200; border: 0; border-radius: 8px; padding: 11px 22px; font: 700 15px inherit; cursor: pointer; }
+  button { background: var(--amber); color: #1b1200; border: 0; border-radius: 8px; padding: 11px 22px; font-family: inherit; font-weight: 700; font-size: 15px; cursor: pointer; }
+  button:disabled { opacity: .45; cursor: default; }
+  nav { position: sticky; top: 0; z-index: 5; display: flex; gap: 6px; overflow-x: auto; margin: 0 -16px 14px; padding: 8px 16px; background: rgba(10,14,19,.96); border-bottom: 1px solid var(--line); scrollbar-width: none; }
+  nav a { flex: none; padding: 5px 12px; border: 1px solid #2c3948; border-radius: 999px; color: var(--text); text-decoration: none; font-size: 13px; }
+  nav a:hover { border-color: var(--cyan); color: var(--cyan); }
+  fieldset { scroll-margin-top: 56px; }
+  #msg.dirty { color: var(--amber); }
   button.ghost { background: #1c2631; color: var(--text); border: 1px solid #2c3948; }
   #msg { min-width: 160px; font-weight: 600; } .ok { color: var(--green); } .err { color: var(--red); }
   a { color: var(--cyan); } .row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
@@ -31,6 +37,7 @@
 <main>
   <h1>✈ PLANE TRACKER SETTINGS</h1>
   <p class="lead">Changes apply instantly — no restart needed. <a href="/">← back to display</a> · <a href="/api/health">health</a></p>
+  <nav id="nav"></nav>
   <form id="form" autocomplete="off"></form>
 </main>
 <div class="bar"><span id="msg"></span><button id="save">Save</button><button class="ghost" id="reload" type="button">Revert</button><button class="ghost" id="logout" type="button">Log out</button></div>
@@ -93,12 +100,13 @@ const SCHEMA = [
     ['panel_relay_boot_seconds', 'Panel boot wait (s)', 'number', { step: 0.5, help: 'Pause after power returns before the screen is unblanked' }],
   ]],
 ];
+const SCHEMA_IDS = new Set(SCHEMA.flatMap(([, f]) => f.map(x => x[0])));
 const form = document.getElementById('form'), msg = document.getElementById('msg');
 const get = (o, p) => p.split('.').reduce((a, k) => a && a[k], o);
 function build(cfg) {
   form.innerHTML = '';
   for (const [title, fields] of SCHEMA) {
-    const fs = document.createElement('fieldset'); fs.innerHTML = '<legend>' + title + '</legend>';
+    const fs = document.createElement('fieldset'); fs.innerHTML = '<legend>' + title + '</legend>'; fs.id = slug(title);
     for (const [key, label, type, o] of fields) {
       const row = document.createElement('div'); row.className = 'f';
       const lab = document.createElement('label'); lab.htmlFor = key; lab.innerHTML = label + (o.help ? '<small>' + o.help + '</small>' : '');
@@ -122,7 +130,21 @@ function build(cfg) {
   u.querySelector('#upd').onclick = runUpdate;
   form.append(u);
   buildWifi();
+  document.getElementById('nav').innerHTML = [...form.querySelectorAll('fieldset')].map(f => '<a href="#' + f.id + '">' + f.querySelector('legend').textContent.replace(/ & .*/, '') + '</a>').join('');
+  baseline = JSON.stringify(collect()); setDirty();
 }
+const slug = (t) => 's-' + t.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+let baseline = '';
+function setDirty() {
+  const d = JSON.stringify(collect()) !== baseline;
+  document.getElementById('save').disabled = !d;
+  if (d) { msg.textContent = 'Unsaved changes'; msg.className = 'dirty'; } else if (msg.className === 'dirty') { msg.textContent = ''; msg.className = ''; }
+  return d;
+}
+form.addEventListener('input', (e) => { if (SCHEMA_IDS.has(e.target.id)) setDirty(); });
+form.addEventListener('change', (e) => { if (SCHEMA_IDS.has(e.target.id)) setDirty(); });
+window.addEventListener('beforeunload', (e) => { if (baseline && setDirty()) e.preventDefault(); });
+window.addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); if (!document.getElementById('save').disabled) document.getElementById('save').click(); } });
 
 /* ---------------- Saved locations ---------------- */
 function buildLocations() {
@@ -266,7 +288,7 @@ async function runUpdate() {
   }
   msgEl.textContent = 'Timed out - check journalctl -u plane-tracker-update'; msgEl.className = 'err'; btn.disabled = false;
 }
-function flash(t, ok = true) { msg.textContent = t; msg.className = ok ? 'ok' : 'err'; clearTimeout(flash.t); flash.t = setTimeout(() => msg.textContent = '', 4000); }
+function flash(t, ok = true) { msg.textContent = t; msg.className = ok ? 'ok' : 'err'; clearTimeout(flash.t); flash.t = setTimeout(() => { msg.textContent = ''; msg.className = ''; setDirty(); }, 4000); }
 async function load() { build(await (await fetch('/api/config')).json()); }
 function collect() {
   const patch = {};
@@ -280,11 +302,15 @@ function collect() {
 }
 document.getElementById('save').onclick = async (e) => {
   e.preventDefault();
-  const r = await fetch('/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(collect()) });
-  const j = await r.json();
-  if (r.ok) { flash(j.changed.length ? 'Saved ✓ (' + j.changed.length + ' changed)' : 'Nothing changed'); build(j.config); } else flash(j.detail || 'Error', false);
+  const btn = e.currentTarget; btn.disabled = true;
+  let r, j;
+  try {
+    r = await fetch('/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(collect()) });
+    j = await r.json();
+  } catch (err) { flash('Could not reach the Pi', false); setDirty(); return; }
+  if (r.ok) { flash(j.changed.length ? 'Saved ✓ (' + j.changed.length + ' changed)' : 'Nothing changed'); build(j.config); } else { flash(j.detail || 'Error', false); setDirty(); }
 };
-document.getElementById('reload').onclick = load;
+document.getElementById('reload').onclick = () => { if (!setDirty() || confirm('Discard unsaved changes?')) load(); };
 document.getElementById('logout').onclick = async () => { await fetch('/api/logout', { method: 'POST' }); location.reload(); };
 fetch('/api/auth').then(r => r.json()).then(a => {
   if (!a.required) { document.getElementById('logout').hidden = true; document.querySelector('p.lead').insertAdjacentHTML('afterend', '<p style="background:#3a2a05;border:1px solid var(--amber);border-radius:8px;padding:10px 12px;font-size:14px">⚠ No password set — anyone on your network can change these settings, and Wi-Fi management is disabled. Add <code>SETTINGS_PASSWORD=…</code> to the <code>.env</code> file and restart the service.</p>'); }
