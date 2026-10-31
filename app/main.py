@@ -228,6 +228,11 @@ def _brief(r):
     }
 
 
+def _inferred(r):
+    inf = app_state.tracker.infer(r)
+    return {"kind": inf["kind"], "airport": _airport_out(inf["airport"])} if inf else None
+
+
 def _detail(r, locked):
     m = r["meta"]
     route = r["route"]            # validated against the plane's actual position/heading
@@ -245,6 +250,7 @@ def _detail(r, locked):
                    "remaining_km": round(prog[1], 1) if prog else None,
                    "total_km": round(prog[2], 1) if prog else None} if route else None),
         "scheduled": m["route_lookup_ok"],
+        "inferred": _inferred(r),
         "locked": locked, "route_rejected": r.get("route_rejected", False),
     }
 

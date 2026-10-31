@@ -57,6 +57,41 @@ class Tracker:
         self.cooldown = set()        # hogs temporarily excluded from auto-selection
         self._last_tick = 0.0
         self._zones, self._zone_key = [], None
+        self._seen = {}              # hex -> last update time; a gap means the plane (re)entered range
+        self.departed = {}           # hex -> airport it was first seen climbing out of
+
+    # ---- inferred origin / destination (planes with no flight plan: microlights, GA, ...) ------
+    def _note_arrival(self, a, now):
+        hx = a["hex"]
+        gap = now - self._seen.get(hx, 0)
+        self._seen[hx] = now
+        if gap < 600:
+            return
+        self.departed.pop(hx, None)
+        alt, vs = a["alt_ft"], a["vs_fpm"]
+        if a["on_ground"] or alt is None or alt > 2000 or vs is None or vs < 150:
+            return                                   # only a plane first seen climbing low is clearly "just departed"
+        hit = self.enricher.nearest_airfield(a["lat"], a["lon"], 4)
+        if hit:
+            self.departed[hx] = hit[0]
+
+    def infer(self, r):
+        """{'kind': 'to'|'from', 'airport': dict} for a plane with no known route, else None. A guess from
+        what we can see: low and descending towards an airfield = landing there; first seen climbing out
+        of one = departed from there."""
+        if r["route"]:
+            return None
+        alt, vs = r["alt_ft"], r["vs_fpm"]
+        if not r["on_ground"] and alt is not None and alt < 1500 and vs is not None and vs < -100:
+            hit = self.enricher.nearest_airfield(r["lat"], r["lon"], 5)
+            if hit:
+                ap, dist = hit
+                ahead = dist < 1.0 or r["track"] is None or r["gs_kt"] is None or abs(
+                    (geo.bearing_deg(r["lat"], r["lon"], ap["lat"], ap["lon"]) - r["track"] + 180) % 360 - 180) < 60
+                if ahead:
+                    return {"kind": "to", "airport": ap}
+        ap = self.departed.get(r["hex"])
+        return {"kind": "from", "airport": ap} if ap else None
 
     # ---- ingest --------------------------------------------------------------
     def update(self, items, now=None):
@@ -80,7 +115,11 @@ class Tracker:
             a["route_rejected"] = bool(r) and a["route"] is None
             a["interest"] = evaluate(a, a["meta"])
             a["airport"] = self._airport_of(a)
+            self._note_arrival(a, now)
             new[a["hex"]] = a
+        if len(self._seen) > 4000:
+            self._seen = {h: t for h, t in self._seen.items() if now - t < 3600}
+            self.departed = {h: v for h, v in self.departed.items() if h in self._seen}
         self.aircraft = new
         self._track_focus(now)
         self._select(now)

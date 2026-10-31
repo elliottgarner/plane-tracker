@@ -216,13 +216,15 @@ function renderCard(st) {
   // route
   const r = d.route, routeEl = $('#route');
   routeEl.classList.toggle('unknown', !r || r.progress == null);
-  setHtml('apt-o', airportHtml(r && r.origin, '---'));
-  setHtml('apt-d', airportHtml(r && r.dest, '---'));
+  const inf = !r && d.inferred;                 // guessed from where the plane was first seen / is heading
+  setHtml('apt-o', airportHtml(r ? r.origin : inf && inf.kind === 'from' ? inf.airport : null, '---'));
+  setHtml('apt-d', airportHtml(r ? r.dest : inf && inf.kind === 'to' ? inf.airport : null, '---'));
   const pct = r && r.progress != null ? clamp(r.progress, 0, 1) : 0;
   $('#prog-fill').style.width = (pct * 100).toFixed(1) + '%';
   $('#prog-glyph').style.left = (pct * 100).toFixed(1) + '%';
   if (!cache.glyph) { cache.glyph = 1; $('#prog-glyph').innerHTML = planeSvg('jet'); }
   if (r && r.progress != null) { const [v, u] = fmtDist(r.remaining_km); setText('prog-txt', Math.round(pct * 100) + '% · ' + v + ' ' + u + ' to go'); }
+  else if (inf) setText('prog-txt', (inf.kind === 'to' ? 'landing at ' : 'departed ') + (inf.airport.name || inf.airport.icao) + ' (inferred)');
   else setText('prog-txt', r ? ' ' : (d.route_rejected ? 'listed route doesn’t match flight path'
     : d.military ? 'military flight · no public route' : d.scheduled ? 'route unknown' : 'private / non-scheduled flight'));
 

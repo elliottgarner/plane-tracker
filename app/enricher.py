@@ -28,6 +28,7 @@ class Enricher:
         self._seed()
         self._cache = {}
         self._airport_cache = {}
+        self._field_cache = {}
         self.rev = 0
         self._pending = set()
         self._miss = {}
@@ -39,6 +40,7 @@ class Enricher:
         """Drop in-memory caches (after the reference DB has been rebuilt)."""
         self._cache.clear()
         self._airport_cache.clear()
+        self._field_cache.clear()
         self.rev += 1
 
     def airports_near(self, lat, lon, radius_km):
@@ -50,6 +52,27 @@ class Enricher:
                 "SELECT icao, lat, lon FROM airports WHERE iata != '' AND lat BETWEEN ? AND ? AND lon BETWEEN ? AND ?",
                 (lat - dlat, lat + dlat, lon - dlon, lon + dlon)).fetchall()
         return [r for r in rows if haversine_km(lat, lon, r[1], r[2]) <= radius_km]
+
+    def nearest_airfield(self, lat, lon, max_km):
+        """(airport dict, distance km) of the closest airfield of any size (strips and microlight sites
+        included) within max_km, or None. Used to infer where a plane with no flight plan took off / is landing."""
+        key = (round(lat, 2), round(lon, 2), max_km)
+        rows = self._field_cache.get(key)
+        if rows is None:
+            pad = max_km + 1.5                                  # the key rounds the position by up to ~0.8 km
+            dlat = pad / 111.0
+            dlon = pad / (111.0 * max(0.2, math.cos(math.radians(lat))))
+            with self._lock:
+                rows = self.db.execute("SELECT icao, lat, lon FROM airports WHERE lat BETWEEN ? AND ? AND lon BETWEEN ? AND ?",
+                                       (lat - dlat, lat + dlat, lon - dlon, lon + dlon)).fetchall()
+            if len(self._field_cache) > 500:
+                self._field_cache.clear()
+            self._field_cache[key] = rows
+        best = min(((haversine_km(lat, lon, r[1], r[2]), r[0]) for r in rows), default=None)
+        if not best or best[0] > max_km:
+            return None
+        ap = self.airport(best[1])
+        return (ap, best[0]) if ap else None
 
     def counts(self):
         return {t: self._q(f"SELECT COUNT(*) FROM {t}")[0] for t in ("aircraft", "airlines", "airports", "routes")}
