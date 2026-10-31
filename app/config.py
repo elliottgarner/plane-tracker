@@ -58,7 +58,12 @@ DEFAULTS = {
     "web_poll_seconds": 5,
     # static per-callsign JSON on a CDN (no API limits)
     "route_url": "https://vrs-standing-data.adsb.lol/routes/{prefix}/{callsign}.json",
-    "route_fallback_url": "https://hexdb.io/api/v1/route/icao/{callsign}",   # tried when the list above has no entry; blank = off
+    # tried in order when the list above has no entry (or its entry doesn't fit the flight); empty = off.
+    # adsbdb.com knows many per-flight operational callsigns (RYR27MC, EZY54VC) that schedule lists lack
+    "route_fallback_urls": [
+        "https://api.adsbdb.com/v0/callsign/{callsign}",
+        "https://hexdb.io/api/v1/route/icao/{callsign}",
+    ],
     "lazy_route_lookup": True,
     "auto_build_reference": True,   # download airline/aircraft/route tables in the background if missing
     "logo_sources": [

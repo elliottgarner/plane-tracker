@@ -114,9 +114,7 @@ class Tracker:
             fits = lambda rt: route_plausible(rt, a["lat"], a["lon"], a["track"], a["gs_kt"], a["alt_ft"], a["vs_fpm"])
             a["route"] = r if r and fits(r) else None
             if r and not a["route"]:                 # listed leg doesn't fit: the callsign was reused, try a second source
-                alt = self.enricher.alt_route(a["callsign"])
-                if alt and fits(alt):
-                    a["route"] = alt
+                a["route"] = next((alt for alt in self.enricher.alt_routes(a["callsign"]) if fits(alt)), None)
             a["route_rejected"] = bool(r) and a["route"] is None
             a["interest"] = evaluate(a, a["meta"])
             a["airport"] = self._airport_of(a)

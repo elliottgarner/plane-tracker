@@ -180,56 +180,73 @@ class Enricher:
         self._pending.add(cs)
         asyncio.create_task(self._fetch_route(cs, ac["lat"], ac["lon"]))
 
-    async def _hexdb_codes(self, cs):
-        """(origin, dest) ICAO codes from the fallback source, or None. hexdb.io answers "EGLL-KJFK", or
-        "Varies" when it doesn't know. Both ends must be airports we know."""
-        url = cfg["route_fallback_url"]
-        if not url:
+    @staticmethod
+    def _parse_external(url, body):
+        """(origin, dest) ICAO codes from one fallback source's JSON, or None.
+        adsbdb.com: {"response": {"flightroute": {"origin": {"icao_code"}, "destination": {...}}}}
+        hexdb.io:   {"route": "EGLL-KJFK"}  (or "Varies" when it doesn't know)"""
+        if "adsbdb" in url:
+            fr = (body.get("response") or {}) if isinstance(body, dict) else {}
+            fr = fr.get("flightroute") if isinstance(fr, dict) else None
+            if not fr:
+                return None
+            codes = [str((fr.get(k) or {}).get("icao_code", "")).upper() for k in ("origin", "destination")]
+        else:
+            codes = str((body or {}).get("route", "")).upper().split("-")
+            codes = [codes[0], codes[-1]] if len(codes) >= 2 else []
+        if len(codes) != 2 or not all(re.fullmatch(r"[A-Z0-9]{3,4}", c) for c in codes) or codes[0] == codes[1]:
             return None
-        async with self._sem:
-            r = await self.client.get(url.format(callsign=cs))
-        if r.status_code != 200:
-            return None
-        codes = str((r.json() or {}).get("route", "")).upper().split("-")
-        if len(codes) < 2 or not all(re.fullmatch(r"[A-Z0-9]{3,4}", c) for c in codes):
-            return None
-        if not (self.airport(codes[0]) and self.airport(codes[-1])):
-            return None
-        return codes[0], codes[-1]
+        return codes[0], codes[1]
 
-    def alt_route(self, cs):
-        """A second candidate route for a callsign whose listed route turned out not to fit (or None)."""
+    async def _external_routes(self, cs):
+        """Candidate (origin, dest) pairs from the configured fallback sources, best source first.
+        Both ends must be airports we know; the plausibility check still vets each against the flight path."""
+        found = []
+        for url in cfg["route_fallback_urls"]:
+            try:
+                async with self._sem:
+                    r = await self.client.get(url.format(callsign=cs))
+                pair = self._parse_external(url, r.json()) if r.status_code == 200 else None
+            except Exception as e:
+                log.info("Route source %s for %s failed: %s", url.split("/")[2], cs, e)
+                continue
+            if pair and pair not in found and self.airport(pair[0]) and self.airport(pair[1]):
+                found.append(pair)
+        return found
+
+    def alt_routes(self, cs):
+        """Other candidate routes for a callsign whose listed route turned out not to fit ([] if none known yet)."""
         hit = self._alt.get(cs)
-        if not hit or time.time() - hit[2] > ALT_TTL or not hit[0]:
-            return None
-        return {"origin": self.airport(hit[0]), "dest": self.airport(hit[1])}
+        if not hit or time.time() - hit[1] > ALT_TTL:
+            return []
+        return [{"origin": self.airport(o), "dest": self.airport(d)} for o, d in hit[0]]
 
     def want_alt_route(self, cs):
         hit = self._alt.get(cs)
-        if cs in self._alt_pending or (hit and time.time() - hit[2] < ALT_TTL) or not cfg["route_fallback_url"]:
+        if cs in self._alt_pending or (hit and time.time() - hit[1] < ALT_TTL) or not cfg["route_fallback_urls"]:
             return
         self._alt_pending.add(cs)
         asyncio.create_task(self._fetch_alt(cs))
 
     async def _fetch_alt(self, cs):
         try:
-            codes = await self._hexdb_codes(cs)
-            self._alt[cs] = (codes[0], codes[1], time.time()) if codes else ("", "", time.time())
-            if codes:
-                log.info("Alternative route %s: %s -> %s", cs, *codes)
+            pairs = await self._external_routes(cs)
+            self._alt[cs] = (pairs, time.time())
+            if pairs:
+                log.info("Alternative routes %s: %s", cs, ", ".join(f"{o}->{d}" for o, d in pairs))
         except Exception as e:
             log.info("Alternative route lookup for %s failed: %s", cs, e)
-            self._alt[cs] = ("", "", time.time() - ALT_TTL + 300)
+            self._alt[cs] = ([], time.time() - ALT_TTL + 300)
         finally:
             self._alt_pending.discard(cs)
 
     async def _fetch_fallback(self, cs):
         """Second opinion for callsigns the VRS list lacks. The plausibility check still vets it against the flight path."""
         try:
-            codes = await self._hexdb_codes(cs)
-            if not codes:
+            pairs = await self._external_routes(cs)
+            if not pairs:
                 return False
-            codes = [codes[0], codes[1]]
+            codes = pairs[0]
             with self._lock, self.db:
                 self.db.execute("INSERT OR REPLACE INTO routes VALUES (?,?,?,?,?)",
                                 (cs, codes[0], codes[-1], "fallback", int(time.time())))
