@@ -223,7 +223,8 @@ function renderCard(st) {
   $('#prog-glyph').style.left = (pct * 100).toFixed(1) + '%';
   if (!cache.glyph) { cache.glyph = 1; $('#prog-glyph').innerHTML = planeSvg('jet'); }
   if (r && r.progress != null) { const [v, u] = fmtDist(r.remaining_km); setText('prog-txt', Math.round(pct * 100) + '% · ' + v + ' ' + u + ' to go'); }
-  else setText('prog-txt', r ? ' ' : (d.route_rejected ? 'listed route doesn’t match flight path' : 'route unknown'));
+  else setText('prog-txt', r ? ' ' : (d.route_rejected ? 'listed route doesn’t match flight path'
+    : d.military ? 'military flight · no public route' : d.scheduled ? 'route unknown' : 'private / non-scheduled flight'));
 
   // aircraft
   setHtml('sil', planeSvg(d.cls));

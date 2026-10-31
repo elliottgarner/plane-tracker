@@ -2,6 +2,7 @@
 import asyncio
 import logging
 import math
+import re
 import threading
 import time
 
@@ -32,7 +33,7 @@ class Enricher:
         self._miss = {}
         self._sem = asyncio.Semaphore(4)
         self.client = httpx.AsyncClient(timeout=8.0, headers={"User-Agent": "plane-tracker/1.0"})
-        self.stats = {"lazy_hits": 0, "lazy_misses": 0}
+        self.stats = {"lazy_hits": 0, "lazy_misses": 0, "fallback_hits": 0}
 
     def reload(self):
         """Drop in-memory caches (after the reference DB has been rebuilt)."""
@@ -154,13 +155,42 @@ class Enricher:
         self._pending.add(cs)
         asyncio.create_task(self._fetch_route(cs, ac["lat"], ac["lon"]))
 
+    async def _fetch_fallback(self, cs):
+        """Second opinion for callsigns the VRS list lacks (hexdb.io: "EGLL-KJFK", or "Varies" when unknown).
+        Both ends must be airports we know; the plausibility check still vets it against the flight path."""
+        url = cfg["route_fallback_url"]
+        if not url:
+            return False
+        try:
+            async with self._sem:
+                r = await self.client.get(url.format(callsign=cs))
+            if r.status_code != 200:
+                return False
+            codes = str((r.json() or {}).get("route", "")).upper().split("-")
+            if len(codes) < 2 or not all(re.fullmatch(r"[A-Z0-9]{3,4}", c) for c in codes):
+                return False
+            if not (self.airport(codes[0]) and self.airport(codes[-1])):
+                return False
+            with self._lock, self.db:
+                self.db.execute("INSERT OR REPLACE INTO routes VALUES (?,?,?,?,?)",
+                                (cs, codes[0], codes[-1], "fallback", int(time.time())))
+            for k in [k for k in self._cache if k[1] == cs]:
+                del self._cache[k]
+            self.stats["fallback_hits"] += 1
+            log.info("Fallback route %s: %s -> %s", cs, codes[0], codes[-1])
+            return True
+        except Exception as e:
+            log.info("Fallback route lookup for %s failed: %s", cs, e)
+            return False
+
     async def _fetch_route(self, cs, lat, lon):
         """Static per-callsign JSON from the VRS standing-data mirror (CDN, no rate limit)."""
         try:
             async with self._sem:
                 r = await self.client.get(cfg["route_url"].format(prefix=cs[:2], callsign=cs))
             if r.status_code == 404:
-                self._record_miss(cs)
+                if not await self._fetch_fallback(cs):
+                    self._record_miss(cs)
                 return
             r.raise_for_status()
             item = r.json()
@@ -177,7 +207,7 @@ class Enricher:
                     del self._cache[k]
                 self.stats["lazy_hits"] += 1
                 log.info("Lazy route %s: %s -> %s", cs, parts[0], parts[-1])
-            else:
+            elif not await self._fetch_fallback(cs):
                 self._record_miss(cs)
         except Exception as e:
             log.info("Route lookup for %s failed: %s", cs, e)

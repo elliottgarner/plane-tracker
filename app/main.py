@@ -244,6 +244,7 @@ def _detail(r, locked):
                    "progress": round(prog[0], 3) if prog else None,
                    "remaining_km": round(prog[1], 1) if prog else None,
                    "total_km": round(prog[2], 1) if prog else None} if route else None),
+        "scheduled": m["route_lookup_ok"],
         "locked": locked, "route_rejected": r.get("route_rejected", False),
     }
 

@@ -58,6 +58,7 @@ DEFAULTS = {
     "web_poll_seconds": 5,
     # static per-callsign JSON on a CDN (no API limits)
     "route_url": "https://vrs-standing-data.adsb.lol/routes/{prefix}/{callsign}.json",
+    "route_fallback_url": "https://hexdb.io/api/v1/route/icao/{callsign}",   # tried when the list above has no entry; blank = off
     "lazy_route_lookup": True,
     "auto_build_reference": True,   # download airline/aircraft/route tables in the background if missing
     "logo_sources": [
