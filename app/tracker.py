@@ -111,7 +111,12 @@ class Tracker:
             a["elevation"] = geo.elevation_deg(alt_m, d, elev)
             a["meta"] = self.enricher.enrich(a)
             r = a["meta"]["route"]
-            a["route"] = r if r and route_plausible(r, a["lat"], a["lon"], a["track"], a["gs_kt"]) else None
+            fits = lambda rt: route_plausible(rt, a["lat"], a["lon"], a["track"], a["gs_kt"], a["alt_ft"], a["vs_fpm"])
+            a["route"] = r if r and fits(r) else None
+            if r and not a["route"]:                 # listed leg doesn't fit: the callsign was reused, try a second source
+                alt = self.enricher.alt_route(a["callsign"])
+                if alt and fits(alt):
+                    a["route"] = alt
             a["route_rejected"] = bool(r) and a["route"] is None
             a["interest"] = evaluate(a, a["meta"])
             a["airport"] = self._airport_of(a)
@@ -127,6 +132,8 @@ class Tracker:
         # warm the route cache for the selected plane and its nearest neighbours
         for r in ([sel] if sel else []) + sorted(new.values(), key=lambda r: r["dist_km"])[:5]:
             self.enricher.want_route(r, r["meta"])
+            if r["route_rejected"]:
+                self.enricher.want_alt_route(r["callsign"])
         if sel:
             self.last_plane_ts = now
         elif new:

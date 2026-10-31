@@ -15,6 +15,7 @@ from .geo import bearing_deg, haversine_km
 log = logging.getLogger("enricher")
 
 MISS_TTL = 6 * 3600
+ALT_TTL = 6 * 3600
 
 
 def _title(s):
@@ -29,6 +30,7 @@ class Enricher:
         self._cache = {}
         self._airport_cache = {}
         self._field_cache = {}
+        self._alt, self._alt_pending = {}, set()    # callsign -> (origin, dest, ts) second-source routes
         self.rev = 0
         self._pending = set()
         self._miss = {}
@@ -178,22 +180,56 @@ class Enricher:
         self._pending.add(cs)
         asyncio.create_task(self._fetch_route(cs, ac["lat"], ac["lon"]))
 
-    async def _fetch_fallback(self, cs):
-        """Second opinion for callsigns the VRS list lacks (hexdb.io: "EGLL-KJFK", or "Varies" when unknown).
-        Both ends must be airports we know; the plausibility check still vets it against the flight path."""
+    async def _hexdb_codes(self, cs):
+        """(origin, dest) ICAO codes from the fallback source, or None. hexdb.io answers "EGLL-KJFK", or
+        "Varies" when it doesn't know. Both ends must be airports we know."""
         url = cfg["route_fallback_url"]
         if not url:
-            return False
+            return None
+        async with self._sem:
+            r = await self.client.get(url.format(callsign=cs))
+        if r.status_code != 200:
+            return None
+        codes = str((r.json() or {}).get("route", "")).upper().split("-")
+        if len(codes) < 2 or not all(re.fullmatch(r"[A-Z0-9]{3,4}", c) for c in codes):
+            return None
+        if not (self.airport(codes[0]) and self.airport(codes[-1])):
+            return None
+        return codes[0], codes[-1]
+
+    def alt_route(self, cs):
+        """A second candidate route for a callsign whose listed route turned out not to fit (or None)."""
+        hit = self._alt.get(cs)
+        if not hit or time.time() - hit[2] > ALT_TTL or not hit[0]:
+            return None
+        return {"origin": self.airport(hit[0]), "dest": self.airport(hit[1])}
+
+    def want_alt_route(self, cs):
+        hit = self._alt.get(cs)
+        if cs in self._alt_pending or (hit and time.time() - hit[2] < ALT_TTL) or not cfg["route_fallback_url"]:
+            return
+        self._alt_pending.add(cs)
+        asyncio.create_task(self._fetch_alt(cs))
+
+    async def _fetch_alt(self, cs):
         try:
-            async with self._sem:
-                r = await self.client.get(url.format(callsign=cs))
-            if r.status_code != 200:
+            codes = await self._hexdb_codes(cs)
+            self._alt[cs] = (codes[0], codes[1], time.time()) if codes else ("", "", time.time())
+            if codes:
+                log.info("Alternative route %s: %s -> %s", cs, *codes)
+        except Exception as e:
+            log.info("Alternative route lookup for %s failed: %s", cs, e)
+            self._alt[cs] = ("", "", time.time() - ALT_TTL + 300)
+        finally:
+            self._alt_pending.discard(cs)
+
+    async def _fetch_fallback(self, cs):
+        """Second opinion for callsigns the VRS list lacks. The plausibility check still vets it against the flight path."""
+        try:
+            codes = await self._hexdb_codes(cs)
+            if not codes:
                 return False
-            codes = str((r.json() or {}).get("route", "")).upper().split("-")
-            if len(codes) < 2 or not all(re.fullmatch(r"[A-Z0-9]{3,4}", c) for c in codes):
-                return False
-            if not (self.airport(codes[0]) and self.airport(codes[-1])):
-                return False
+            codes = [codes[0], codes[1]]
             with self._lock, self.db:
                 self.db.execute("INSERT OR REPLACE INTO routes VALUES (?,?,?,?,?)",
                                 (cs, codes[0], codes[-1], "fallback", int(time.time())))
@@ -261,7 +297,7 @@ class Enricher:
             log.debug("bad airport payload %r", ap)
 
 
-def route_plausible(route, lat, lon, track=None, gs=None):
+def route_plausible(route, lat, lon, track=None, gs=None, alt_ft=None, vs_fpm=None):
     """Callsign->route tables are only a schedule: callsigns get reused on other legs/days.
     Accept a route only if the aircraft is actually flying along it."""
     try:
@@ -273,6 +309,8 @@ def route_plausible(route, lat, lon, track=None, gs=None):
         total = haversine_km(o["lat"], o["lon"], d["lat"], d["lon"])
         if a + b - total > max(40.0, 0.15 * total):     # well off the great-circle corridor
             return False
+        if b < 40 and total > 80 and alt_ft and alt_ft > 3000 and vs_fpm and vs_fpm > 1500:
+            return False                     # still climbing hard beside the "destination": it just left it
         if track is not None and (gs or 0) > 80 and b > 20 and a > 25:
             diff = abs((bearing_deg(lat, lon, d["lat"], d["lon"]) - track + 180) % 360 - 180)
             if diff > 100:                   # flying away from the destination: wrong leg
